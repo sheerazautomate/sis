@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIS Dashboard - Layyah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 p-4 min-h-screen font-sans">
+
+    <div class="max-w-5xl mx-auto">
+        <div class="bg-white p-6 rounded-xl shadow-sm mb-6 border border-slate-200">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">SIS Attendance Explorer</h1>
+                    <p class="text-xs text-slate-500 uppercase tracking-wider font-semibold">District: Layyah</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="emisInput" placeholder="EMIS Code" 
+                           class="bg-slate-50 border border-slate-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-40"
+                           value="32230085">
+                    <button onclick="fetchAllData()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-all active:scale-95">
+                        FETCH DATA
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-8">
+            <div class="space-y-6">
+                <section>
+                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Teacher: Daily Status</h2>
+                    <div id="table-teacher-today" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto">
+                        <p class="p-8 text-center text-slate-400 italic text-sm">Enter code and click fetch...</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Student: Daily Status</h2>
+                    <div id="table-student-today" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"></div>
+                </section>
+
+                <section>
+                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Teacher: Monthly Trend (Log)</h2>
+                    <div id="table-teacher-monthly" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"></div>
+                </section>
+
+                <section>
+                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Student: Monthly Trend (Log)</h2>
+                    <div id="table-student-monthly" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // We use a public CORS proxy to allow GitHub Pages (static) to talk to the SIS API
+        const PROXY_URL = "https://corsproxy.io/?url=";
+
+        async function fetchEndpoint(url, targetId) {
+            const container = document.getElementById(targetId);
+            container.innerHTML = `<div class="p-8 text-center"><span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></span> Loading...</div>`;
+
+            try {
+                // Encode the SIS URL so the proxy can handle it
+                const proxiedUrl = PROXY_URL + encodeURIComponent(url);
+                const response = await fetch(proxiedUrl);
+                
+                if (!response.ok) throw new Error('API unreachable');
+                const data = await response.json();
+                
+                renderTable(data, targetId);
+            } catch (err) {
+                container.innerHTML = `
+                    <div class="p-6 text-red-500 text-xs font-mono bg-red-50">
+                        FAILED TO FETCH: Check EMIS code or connection.
+                    </div>`;
+            }
+        }
+
+        function renderTable(data, targetId) {
+            const container = document.getElementById(targetId);
+            const rows = Array.isArray(data) ? data : (data ? [data] : []);
+
+            if (rows.length === 0) {
+                container.innerHTML = `<p class="p-6 text-slate-400 text-sm">No data available for this selection.</p>`;
+                return;
+            }
+
+            const keys = Object.keys(rows[0]);
+            let html = `<table class="w-full text-left text-sm">`;
+            
+            // Header
+            html += `<thead class="bg-slate-50 border-b border-slate-200"><tr>`;
+            keys.forEach(key => {
+                html += `<th class="px-4 py-3 font-bold text-slate-700 uppercase text-[10px]">${key.replace(/_/g, ' ')}</th>`;
+            });
+            html += `</tr></thead><tbody class="divide-y divide-slate-100">`;
+
+            // Body
+            rows.forEach(row => {
+                html += `<tr class="hover:bg-slate-50 transition-colors">`;
+                keys.forEach(key => {
+                    const val = row[key] ?? '-';
+                    html += `<td class="px-4 py-3 text-slate-600">${val}</td>`;
+                });
+                html += `</tr>`;
+            });
+            
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function fetchAllData() {
+            const emis = document.getElementById('emisInput').value.trim();
+            if(!emis) return;
+
+            const base = "https://sis.pesrp.edu.pk/attendance/";
+            
+            fetchEndpoint(`${base}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`, 'table-teacher-today');
+            fetchEndpoint(`${base}get_today_attendance_stats?s_id_emis_code=${emis}`, 'table-student-today');
+            fetchEndpoint(`${base}get_teachers_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'table-teacher-monthly');
+            fetchEndpoint(`${base}get_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'table-student-monthly');
+        }
+    </script>
+</body>
+</html>
