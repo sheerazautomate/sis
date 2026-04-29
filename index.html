@@ -441,6 +441,97 @@
     display: inline-block;
   }
   .modal-open-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Modal stat cards */
+  .modal-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .modal-stat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .modal-stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .modal-stat-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .modal-stat-value.green  { color: var(--accent2); }
+  .modal-stat-value.red    { color: var(--danger); }
+  .modal-stat-value.blue   { color: var(--accent); }
+  .modal-stat-value.yellow { color: var(--warn); }
+  .modal-status-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .modal-status-banner.marked   { background: rgba(63,185,80,0.1);  border: 1px solid rgba(63,185,80,0.25);  color: var(--accent2); }
+  .modal-status-banner.unmarked { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.2);   color: var(--danger);  }
+  .modal-meta-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .modal-meta-chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .modal-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+  .modal-raw-toggle {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 0;
+    user-select: none;
+    transition: color 0.15s;
+  }
+  .modal-raw-toggle:hover { color: var(--text); }
+  .modal-raw-pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    overflow-x: auto;
+    margin-top: 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
 </style>
 </head>
 <body>
@@ -593,16 +684,42 @@
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-tabs">
-      <button class="modal-tab active" onclick="switchTab('students')" id="tabStudents">🎓 Students</button>
-      <button class="modal-tab" onclick="switchTab('teachers')" id="tabTeachers">👨‍🏫 Teachers</button>
+      <button class="modal-tab active" onclick="switchModalTab('students')" id="tabStudents">🎓 Students</button>
+      <button class="modal-tab" onclick="switchModalTab('teachers')" id="tabTeachers">👨‍🏫 Teachers</button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" id="modalBody">
       <div class="modal-spinner" id="modalSpinner">
         <div class="spinner-ring"></div>
-        <span>Loading from PESRP directly...</span>
+        <span id="modalSpinnerText">Fetching data...</span>
       </div>
-      <iframe class="modal-frame active" id="frameStudents" title="Students Attendance"></iframe>
-      <iframe class="modal-frame" id="frameTeachers" title="Teachers Attendance"></iframe>
+      <div class="modal-content-area" id="modalContentArea" style="display:none; padding:20px; overflow-y:auto; height:100%;">
+
+        <!-- STUDENTS PANEL -->
+        <div id="modalStudentsPanel">
+          <div class="modal-stat-grid" id="modalSStats"></div>
+          <div class="modal-raw-toggle" onclick="toggleRaw('s')">
+            <span id="rawToggleLabelS">▶ Show raw JSON</span>
+          </div>
+          <pre class="modal-raw-pre" id="modalSRaw" style="display:none"></pre>
+        </div>
+
+        <!-- TEACHERS PANEL -->
+        <div id="modalTeachersPanel" style="display:none">
+          <div class="modal-stat-grid" id="modalTStats"></div>
+          <div class="modal-raw-toggle" onclick="toggleRaw('t')">
+            <span id="rawToggleLabelT">▶ Show raw JSON</span>
+          </div>
+          <pre class="modal-raw-pre" id="modalTRaw" style="display:none"></pre>
+        </div>
+
+        <!-- ERROR PANEL (fallback) -->
+        <div id="modalErrorPanel" style="display:none; text-align:center; padding:40px 20px;">
+          <div style="font-size:28px; margin-bottom:12px;">⚠️</div>
+          <div style="font-family:var(--mono); font-size:13px; color:var(--muted); margin-bottom:16px;" id="modalErrorText">All proxies failed.</div>
+          <a class="modal-open-btn" id="modalFallbackLink" href="#" target="_blank" style="font-size:13px; padding:8px 18px;">↗ Open directly in new tab</a>
+        </div>
+
+      </div>
     </div>
     <div class="modal-footer">
       <span class="modal-url" id="modalUrlDisplay"></span>
@@ -952,65 +1069,155 @@ function showError(msg) {
 
 // ── Manual Check Modal ───────────────────────────────────────
 let currentModalEmis = '';
-let currentTab = 'students';
+let currentModalTab = 'students';
+let modalCache = {}; // emis -> { students: data|null, teachers: data|null }
 
 function openManualModal(emisCode, schoolName) {
   currentModalEmis = emisCode;
-  currentTab = 'students';
+  currentModalTab = 'students';
+
   document.getElementById('modalSchoolName').textContent = schoolName;
   document.getElementById('modalEmisCode').textContent = 'EMIS: ' + emisCode;
   document.getElementById('manualModal').classList.add('open');
-  document.getElementById('modalSpinner').style.display = 'flex';
 
-  // Reset tabs
+  // Reset to students tab
   document.getElementById('tabStudents').classList.add('active');
   document.getElementById('tabTeachers').classList.remove('active');
-  document.getElementById('frameStudents').classList.add('active');
-  document.getElementById('frameTeachers').classList.remove('active');
+  document.getElementById('modalStudentsPanel').style.display = 'block';
+  document.getElementById('modalTeachersPanel').style.display = 'none';
 
-  loadModalFrame('students', emisCode);
+  // Set footer URL
+  const sUrl = `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emisCode}&ony_kpztp_districts=false`;
+  document.getElementById('modalUrlDisplay').textContent = sUrl;
+  document.getElementById('modalOpenLink').href = sUrl;
+  document.getElementById('modalFallbackLink').href = sUrl;
+
+  // If cached, render immediately
+  if (modalCache[emisCode]) {
+    renderModalData(modalCache[emisCode]);
+  } else {
+    showModalSpinner('Fetching attendance data...');
+    fetchModalData(emisCode);
+  }
 }
 
-function loadModalFrame(type, emis) {
+async function fetchModalData(emis) {
+  const sBase = `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
+  const tBase = `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
+
+  const [sData, tData] = await Promise.all([
+    fetchWithRetry(STUDENT_BASE, emis),
+    fetchWithRetry(TEACHER_BASE, emis)
+  ]);
+
+  const result = { students: sData, teachers: tData };
+  modalCache[emis] = result;
+
+  // Only render if modal still showing this emis
+  if (currentModalEmis === emis) renderModalData(result);
+}
+
+function renderModalData(result) {
+  hideModalSpinner();
+
+  const sData = result.students;
+  const tData = result.teachers;
+
+  // Render students panel
+  renderModalPanel('s', sData, 'Students');
+  renderModalPanel('t', tData, 'Teachers');
+
+  // Show content
+  document.getElementById('modalErrorPanel').style.display = 'none';
+  document.getElementById('modalContentArea').style.display = 'block';
+}
+
+function renderModalPanel(key, data, label) {
+  const statsEl = document.getElementById(key === 's' ? 'modalSStats' : 'modalTStats');
+  const rawEl   = document.getElementById(key === 's' ? 'modalSRaw'   : 'modalTRaw');
+
+  if (!data) {
+    statsEl.innerHTML = `
+      <div style="grid-column:1/-1; text-align:center; padding:30px; font-family:var(--mono); font-size:13px; color:var(--danger);">
+        ⚠️ Could not load ${label} data — all proxies failed.<br>
+        <a href="${currentModalEmis}" target="_blank" style="color:var(--accent); margin-top:8px; display:inline-block;">↗ Try opening directly</a>
+      </div>`;
+    rawEl.textContent = '';
+    return;
+  }
+
+  const present  = parseNum(data.present_count);
+  const absent   = parseNum(data.absent_count);
+  const marked   = parseNum(data.marked_count);
+  const unmarked = parseNum(data.unmarked_count);
+  const isMarked = marked > 0;
+
+  // Status banner
+  const banner = `
+    <div class="modal-status-banner ${isMarked ? 'marked' : 'unmarked'}" style="grid-column:1/-1">
+      <span>${isMarked ? '✅' : '❌'}</span>
+      <span>${label} Attendance ${isMarked ? 'MARKED' : 'NOT MARKED'} — ${data.todayDate || ''}</span>
+    </div>`;
+
+  // Stat cards
+  const cards = [
+    { label: 'Present',       value: present.toLocaleString(),  cls: 'green'  },
+    { label: 'Absent',        value: absent.toLocaleString(),   cls: 'red'    },
+    { label: 'Total Marked',  value: marked.toLocaleString(),   cls: 'blue'   },
+    { label: 'Not Marked Yet',value: unmarked.toLocaleString(), cls: 'yellow' },
+  ].map(c => `
+    <div class="modal-stat-card">
+      <div class="modal-stat-label">${c.label}</div>
+      <div class="modal-stat-value ${c.cls}">${c.value}</div>
+    </div>`).join('');
+
+  statsEl.innerHTML = banner + cards;
+  rawEl.textContent = JSON.stringify(data, null, 2);
+}
+
+function switchModalTab(type) {
+  currentModalTab = type;
+  document.getElementById('tabStudents').classList.toggle('active', type === 'students');
+  document.getElementById('tabTeachers').classList.toggle('active', type === 'teachers');
+  document.getElementById('modalStudentsPanel').style.display = type === 'students' ? 'block' : 'none';
+  document.getElementById('modalTeachersPanel').style.display = type === 'teachers' ? 'block' : 'none';
+
+  // Update footer URL
+  const emis = currentModalEmis;
   const url = type === 'students'
     ? `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`
     : `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
-
   document.getElementById('modalUrlDisplay').textContent = url;
   document.getElementById('modalOpenLink').href = url;
-
-  const frameId = type === 'students' ? 'frameStudents' : 'frameTeachers';
-  const frame = document.getElementById(frameId);
-
-  document.getElementById('modalSpinner').style.display = 'flex';
-  frame.onload = () => {
-    document.getElementById('modalSpinner').style.display = 'none';
-  };
-  frame.src = url;
+  document.getElementById('modalFallbackLink').href = url;
 }
 
-function switchTab(type) {
-  currentTab = type;
-  document.getElementById('tabStudents').classList.toggle('active', type === 'students');
-  document.getElementById('tabTeachers').classList.toggle('active', type === 'teachers');
-  document.getElementById('frameStudents').classList.toggle('active', type === 'students');
-  document.getElementById('frameTeachers').classList.toggle('active', type === 'teachers');
+function toggleRaw(key) {
+  const pre   = document.getElementById(key === 's' ? 'modalSRaw' : 'modalTRaw');
+  const label = document.getElementById(key === 's' ? 'rawToggleLabelS' : 'rawToggleLabelT');
+  const open  = pre.style.display === 'none';
+  pre.style.display   = open ? 'block' : 'none';
+  label.textContent   = open ? '▼ Hide raw JSON' : '▶ Show raw JSON';
+}
 
-  loadModalFrame(type, currentModalEmis);
+function showModalSpinner(msg) {
+  document.getElementById('modalSpinnerText').textContent = msg || 'Fetching...';
+  document.getElementById('modalSpinner').style.display = 'flex';
+  document.getElementById('modalContentArea').style.display = 'none';
+}
+
+function hideModalSpinner() {
+  document.getElementById('modalSpinner').style.display = 'none';
 }
 
 function closeModal() {
   document.getElementById('manualModal').classList.remove('open');
-  // Clear iframes to stop loading
-  document.getElementById('frameStudents').src = 'about:blank';
-  document.getElementById('frameTeachers').src = 'about:blank';
+  currentModalEmis = '';
 }
 
-// Close on overlay click
 document.getElementById('manualModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
-// Close on Escape
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 </script>
