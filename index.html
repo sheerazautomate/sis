@@ -1,282 +1,763 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIS Attendance Monitor</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PESRP Attendance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:var(--font-sans,system-ui,sans-serif);background:var(--color-background-tertiary,#f5f5f3);min-height:100vh;padding:20px}
-  .header{background:var(--color-background-primary,#fff);border:0.5px solid var(--color-border-tertiary,rgba(0,0,0,0.12));border-radius:var(--border-radius-lg,12px);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-  .header-left h1{font-size:18px;font-weight:500;color:var(--color-text-primary,#1a1a1a)}
-  .header-left p{font-size:12px;color:var(--color-text-secondary,#666);margin-top:2px}
-  .fetch-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .fetch-row input{height:36px;padding:0 12px;border:0.5px solid var(--color-border-secondary,rgba(0,0,0,0.25));border-radius:var(--border-radius-md,8px);font-size:13px;font-weight:500;background:var(--color-background-primary);color:var(--color-text-primary);outline:none;width:130px}
-  .fetch-row input:focus{box-shadow:0 0 0 2px rgba(59,130,246,0.25)}
-  .fetch-row button{height:36px;padding:0 18px;border:0.5px solid var(--color-border-secondary,rgba(0,0,0,0.25));border-radius:var(--border-radius-md,8px);font-size:12px;font-weight:500;background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;transition:background 0.15s}
-  .fetch-row button:hover{background:var(--color-background-secondary,#f0f0ee)}
-  .fetch-row button.loading{opacity:0.6;pointer-events:none}
-  .section-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;padding-left:2px}
-  .daily-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
-  @media(max-width:580px){.daily-grid{grid-template-columns:1fr}}
-  .stat-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary,rgba(0,0,0,0.12));border-radius:var(--border-radius-lg,12px);overflow:hidden}
-  .card-header{padding:12px 16px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between}
-  .card-header span{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em}
-  .card-header .date-badge{font-size:11px;color:var(--color-text-tertiary,#999);background:var(--color-background-secondary);padding:2px 8px;border-radius:20px;border:0.5px solid var(--color-border-tertiary)}
-  .stat-body{padding:16px}
-  .stat-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
-  .metric{background:var(--color-background-secondary,#f5f5f3);border-radius:var(--border-radius-md,8px);padding:10px 12px}
-  .metric .m-label{font-size:10px;color:var(--color-text-tertiary,#999);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px}
-  .metric .m-val{font-size:20px;font-weight:500;color:var(--color-text-primary)}
-  .metric.present .m-val{color:#1d9e75}
-  .metric.absent .m-val{color:#d85a30}
-  .metric.pct-p .m-val{color:#1d9e75}
-  .metric.pct-a .m-val{color:#d85a30}
-  .loading-pulse{padding:28px 16px;text-align:center;font-size:12px;color:var(--color-text-tertiary);animation:pulse 1.4s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-  .error-msg{padding:16px;font-size:12px;color:#d85a30}
-  .monthly-section{margin-bottom:22px}
-  .monthly-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg,12px);overflow:hidden}
-  .monthly-card .card-header{padding:12px 16px}
-  .calendar-grid{padding:14px 16px;display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-  .day-cell{border-radius:var(--border-radius-md,8px);padding:6px 4px;text-align:center;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;border:0.5px solid transparent}
-  .day-cell .dc-num{font-size:11px;font-weight:500;color:var(--color-text-tertiary)}
-  .day-cell .dc-p{font-size:13px;font-weight:500;color:#1d9e75}
-  .day-cell .dc-a{font-size:11px;color:#d85a30}
-  .day-cell .dc-u{font-size:10px;color:var(--color-text-tertiary)}
-  .day-cell.has-data{background:var(--color-background-secondary);border-color:var(--color-border-tertiary)}
-  .day-cell.weekend{opacity:0.45}
-  .day-cell.holiday{opacity:0.45}
-  .day-cell.today-cell{border:1.5px solid #378add;background:#e6f1fb}
-  .day-cell.empty{opacity:0}
-  .cal-legend{display:flex;gap:16px;padding:0 16px 12px;flex-wrap:wrap}
-  .cal-legend span{font-size:11px;color:var(--color-text-secondary);display:flex;align-items:center;gap:4px}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-  .dot.p{background:#1d9e75}
-  .dot.a{background:#d85a30}
-  .dot.u{background:var(--color-border-secondary)}
-  .cal-day-headers{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:0 16px 4px}
-  .cal-day-headers span{font-size:10px;text-align:center;color:var(--color-text-tertiary);font-weight:500;text-transform:uppercase}
-  .summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 16px;border-top:0.5px solid var(--color-border-tertiary);margin-top:4px}
-  .summary-bar .sb-item{text-align:center}
-  .summary-bar .sb-label{font-size:10px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em}
-  .summary-bar .sb-val{font-size:15px;font-weight:500;color:var(--color-text-primary)}
-  .summary-bar .sb-val.p{color:#1d9e75}
-  .summary-bar .sb-val.a{color:#d85a30}
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --danger: #f85149;
+    --warn: #e3b341;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
+    color: #0d1117;
+    flex-shrink: 0;
+  }
+  .header-title { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
+  .header-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .header-date {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(88,166,255,0.1);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(88,166,255,0.2);
+  }
+
+  /* MAIN */
+  main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+  /* FILTERS */
+  .filter-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .filter-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .filter-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+  .filter-group label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237d8590' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    transition: border-color 0.15s;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+  select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-fetch {
+    background: var(--accent);
+    color: #0d1117;
+    border: none;
+    padding: 9px 22px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+  .btn-fetch:hover { opacity: 0.85; }
+  .btn-fetch:active { transform: scale(0.97); }
+  .btn-fetch:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* PROGRESS */
+  .progress-wrap {
+    margin-top: 14px;
+    display: none;
+  }
+  .progress-wrap.visible { display: block; }
+  .progress-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .progress-bar-bg {
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.2s ease;
+    width: 0%;
+  }
+
+  /* SUMMARY CARDS */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: none;
+  }
+  .card.visible { display: block; }
+  .card-icon { font-size: 18px; margin-bottom: 8px; }
+  .card-label { font-size: 11px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .card-value { font-size: 26px; font-family: var(--mono); font-weight: 600; line-height: 1; }
+  .card-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+  .card-value.green { color: var(--accent2); }
+  .card-value.blue { color: var(--accent); }
+  .card-value.red { color: var(--danger); }
+
+  /* TABLES */
+  .tables-wrap { display: none; }
+  .tables-wrap.visible { display: block; }
+
+  .table-section { margin-bottom: 28px; }
+  .table-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .table-title {
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+  }
+  .table-badge {
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(88,166,255,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(88,166,255,0.2);
+  }
+  .table-sort-hint {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .table-scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--surface2); }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--border);
+  }
+  th:hover { color: var(--text); }
+  th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+  th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  td {
+    padding: 10px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  td.school-name { white-space: normal; max-width: 260px; font-weight: 500; }
+  td.num { font-family: var(--mono); text-align: right; }
+  td.num.present { color: var(--accent2); }
+  td.num.absent { color: var(--danger); }
+  td.num.total { color: var(--accent); }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .status-marked {
+    background: rgba(63,185,80,0.12);
+    color: var(--accent2);
+    border: 1px solid rgba(63,185,80,0.25);
+  }
+  .status-unmarked {
+    background: rgba(248,81,73,0.1);
+    color: var(--danger);
+    border: 1px solid rgba(248,81,73,0.2);
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* EMPTY / ERROR */
+  .state-msg {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 13px;
+    display: none;
+  }
+  .state-msg.visible { display: block; }
+  .state-msg .icon { font-size: 36px; margin-bottom: 12px; }
+
+  /* LOADING overlay spinner for cells */
+  .loading-row td { color: var(--muted); font-style: italic; font-family: var(--mono); }
+
+  @media (max-width: 640px) {
+    main { padding: 12px; }
+    .filter-row { flex-direction: column; }
+    .filter-group { min-width: 100%; }
+    .btn-fetch { width: 100%; justify-content: center; }
+  }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-left">
-    <h1>SIS attendance monitor</h1>
-    <p>Punjab Education Student Information System</p>
+<header>
+  <div class="logo-mark">PS</div>
+  <div>
+    <div class="header-title">PESRP Attendance Dashboard</div>
+    <div class="header-sub">Punjab School Attendance Monitor</div>
   </div>
-  <div class="fetch-row">
-    <input type="text" id="emisInput" value="32230085" placeholder="EMIS code">
-    <button onclick="fetchAll()" id="fetchBtn">Fetch data</button>
+  <div class="header-date" id="headerDate">—</div>
+</header>
+
+<main>
+
+  <!-- FILTERS -->
+  <div class="filter-panel">
+    <div class="filter-label">📍 Select Location</div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>District</label>
+        <select id="selDistrict" disabled><option value="">— Loading —</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Wing</label>
+        <select id="selWing" disabled><option value="">— Select District —</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Tehsil</label>
+        <select id="selTehsil" disabled><option value="">— Select Wing —</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Markaz</label>
+        <select id="selMarkaz" disabled><option value="">— Select Tehsil —</option></select>
+      </div>
+      <button class="btn-fetch" id="btnFetch" disabled>Fetch Attendance</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-text" id="progressText">Fetching...</div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    </div>
   </div>
-</div>
 
-<div class="section-label">Daily attendance — today</div>
-<div class="daily-grid">
-  <div class="stat-card" id="daily-teacher"><div class="loading-pulse">Loading teachers…</div></div>
-  <div class="stat-card" id="daily-student"><div class="loading-pulse">Loading students…</div></div>
-</div>
+  <!-- SUMMARY CARDS -->
+  <div class="cards-grid" id="cardsGrid">
+    <div class="card" id="cardSchools">
+      <div class="card-icon">🏫</div>
+      <div class="card-label">Total Schools</div>
+      <div class="card-value blue" id="cSchools">—</div>
+    </div>
+    <div class="card" id="cardSPresent">
+      <div class="card-icon">🎓</div>
+      <div class="card-label">Students Present</div>
+      <div class="card-value green" id="cSPresent">—</div>
+      <div class="card-sub" id="cSAbsent">Absent: —</div>
+    </div>
+    <div class="card" id="cardSMarked">
+      <div class="card-icon">✅</div>
+      <div class="card-label">Students Marked</div>
+      <div class="card-value" id="cSMarked">—</div>
+      <div class="card-sub" id="cSUnmarked">Not marked: —</div>
+    </div>
+    <div class="card" id="cardTPresent">
+      <div class="card-icon">👨‍🏫</div>
+      <div class="card-label">Teachers Present</div>
+      <div class="card-value green" id="cTPresent">—</div>
+      <div class="card-sub" id="cTAbsent">Absent: —</div>
+    </div>
+    <div class="card" id="cardTMarked">
+      <div class="card-icon">📋</div>
+      <div class="card-label">Teachers Marked</div>
+      <div class="card-value" id="cTMarked">—</div>
+      <div class="card-sub" id="cTUnmarked">Not marked: —</div>
+    </div>
+  </div>
 
-<div class="section-label">Monthly attendance — calendar view</div>
-<div class="monthly-section">
-  <div class="monthly-card" id="monthly-teacher"><div class="loading-pulse">Loading teacher log…</div></div>
-</div>
-<div class="monthly-section">
-  <div class="monthly-card" id="monthly-student"><div class="loading-pulse">Loading student log…</div></div>
-</div>
+  <!-- EMPTY STATE -->
+  <div class="state-msg visible" id="emptyState">
+    <div class="icon">📊</div>
+    <div>Select a District, Wing, Tehsil and Markaz<br>then click <strong>Fetch Attendance</strong></div>
+  </div>
+
+  <!-- ERROR STATE -->
+  <div class="state-msg" id="errorState">
+    <div class="icon">⚠️</div>
+    <div id="errorMsg">Something went wrong.</div>
+  </div>
+
+  <!-- TABLES -->
+  <div class="tables-wrap" id="tablesWrap">
+
+    <div class="table-section">
+      <div class="table-header">
+        <span class="table-title">🎓 STUDENTS ATTENDANCE</span>
+        <span class="table-badge" id="sBadge">0 schools</span>
+        <span class="table-sort-hint">Click column header to sort</span>
+      </div>
+      <div class="table-scroll">
+        <table id="studentsTable">
+          <thead>
+            <tr>
+              <th data-col="name" data-table="s">School Name <span class="sort-arrow">↕</span></th>
+              <th data-col="level" data-table="s">Level <span class="sort-arrow">↕</span></th>
+              <th data-col="gender" data-table="s">Gender <span class="sort-arrow">↕</span></th>
+              <th data-col="present" data-table="s" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
+              <th data-col="absent" data-table="s" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
+              <th data-col="marked" data-table="s" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
+              <th data-col="status" data-table="s">Status <span class="sort-arrow">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="studentsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="table-section">
+      <div class="table-header">
+        <span class="table-title">👨‍🏫 TEACHERS ATTENDANCE</span>
+        <span class="table-badge" id="tBadge">0 schools</span>
+        <span class="table-sort-hint">Click column header to sort</span>
+      </div>
+      <div class="table-scroll">
+        <table id="teachersTable">
+          <thead>
+            <tr>
+              <th data-col="name" data-table="t">School Name <span class="sort-arrow">↕</span></th>
+              <th data-col="level" data-table="t">Level <span class="sort-arrow">↕</span></th>
+              <th data-col="gender" data-table="t">Gender <span class="sort-arrow">↕</span></th>
+              <th data-col="present" data-table="t" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
+              <th data-col="absent" data-table="t" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
+              <th data-col="marked" data-table="t" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
+              <th data-col="status" data-table="t">Status <span class="sort-arrow">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="teachersTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
 
 <script>
-const PROXIES = [
-  "https://corsproxy.io/?url=",
-  "https://api.allorigins.win/raw?url=",
-  "https://proxy.cors.sh/"
-];
-const BASE = "https://sis.pesrp.edu.pk/attendance/";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
+const STUDENT_API = emis => `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
+const TEACHER_API = emis => `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
 
-async function fetchWithFallback(url) {
-  for (let i = 0; i < PROXIES.length; i++) {
-    try {
-      const res = await fetch(PROXIES[i] + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
-      if (!res.ok) continue;
-      const data = await res.json();
-      return data;
-    } catch(e) {
-      if (i === PROXIES.length - 1) throw e;
+let allRows = [];
+let sortState = { s: { col: 'status', asc: true }, t: { col: 'status', asc: true } };
+let lastStudentData = [];
+let lastTeacherData = [];
+
+// ── CSV Parsing ──────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).map(line => {
+    const vals = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += c; }
     }
-  }
+    vals.push(cur.trim());
+    const row = {};
+    headers.forEach((h, i) => row[h] = (vals[i] || '').replace(/^"|"$/g, '').trim());
+    return row;
+  }).filter(r => r['EMIS']);
 }
 
-function pct(a, b) {
-  const total = (parseInt(a)||0) + (parseInt(b)||0);
-  if (!total) return {p:"—", a:"—", marked:0};
+function unique(arr) { return [...new Set(arr)].filter(Boolean).sort(); }
+
+// ── Populate Filters ─────────────────────────────────────────
+function fillSelect(el, options, placeholder) {
+  el.innerHTML = `<option value="">${placeholder}</option>` +
+    options.map(o => `<option value="${o}">${o}</option>`).join('');
+  el.disabled = false;
+}
+
+document.getElementById('selDistrict').addEventListener('change', function() {
+  const d = this.value;
+  const selW = document.getElementById('selWing');
+  const selT = document.getElementById('selTehsil');
+  const selM = document.getElementById('selMarkaz');
+  selT.innerHTML = '<option value="">— Select Wing —</option>'; selT.disabled = true;
+  selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true;
+  document.getElementById('btnFetch').disabled = true;
+  if (!d) { selW.innerHTML = '<option value="">— Select District —</option>'; selW.disabled = true; return; }
+  const wings = unique(allRows.filter(r => r['District'] === d).map(r => r['Wing']));
+  fillSelect(selW, wings, '— All Wings —');
+  // also allow blank wing → all
+  selW.dispatchEvent(new Event('change'));
+});
+
+document.getElementById('selWing').addEventListener('change', function() {
+  const d = document.getElementById('selDistrict').value;
+  const w = this.value;
+  const selT = document.getElementById('selTehsil');
+  const selM = document.getElementById('selMarkaz');
+  selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true;
+  document.getElementById('btnFetch').disabled = true;
+  if (!d) return;
+  const filtered = allRows.filter(r => r['District'] === d && (!w || r['Wing'] === w));
+  const tehsils = unique(filtered.map(r => r['Tehsil']));
+  fillSelect(selT, tehsils, '— Select Tehsil —');
+});
+
+document.getElementById('selTehsil').addEventListener('change', function() {
+  const d = document.getElementById('selDistrict').value;
+  const w = document.getElementById('selWing').value;
+  const t = this.value;
+  const selM = document.getElementById('selMarkaz');
+  document.getElementById('btnFetch').disabled = true;
+  if (!t) { selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true; return; }
+  const filtered = allRows.filter(r =>
+    r['District'] === d && (!w || r['Wing'] === w) && r['Tehsil'] === t
+  );
+  const marks = unique(filtered.map(r => r['Markaz']));
+  fillSelect(selM, marks, '— Select Markaz —');
+});
+
+document.getElementById('selMarkaz').addEventListener('change', function() {
+  document.getElementById('btnFetch').disabled = !this.value;
+});
+
+// ── Fetch Attendance ─────────────────────────────────────────
+document.getElementById('btnFetch').addEventListener('click', fetchAttendance);
+
+async function fetchAttendance() {
+  const d = document.getElementById('selDistrict').value;
+  const w = document.getElementById('selWing').value;
+  const t = document.getElementById('selTehsil').value;
+  const m = document.getElementById('selMarkaz').value;
+  if (!d || !t || !m) return;
+
+  const schools = allRows.filter(r =>
+    r['District'] === d &&
+    (!w || r['Wing'] === w) &&
+    r['Tehsil'] === t &&
+    r['Markaz'] === m
+  );
+
+  if (!schools.length) {
+    showError('No schools found for this selection.');
+    return;
+  }
+
+  // Reset UI
+  document.getElementById('emptyState').classList.remove('visible');
+  document.getElementById('errorState').classList.remove('visible');
+  document.getElementById('tablesWrap').classList.remove('visible');
+  document.getElementById('btnFetch').disabled = true;
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('visible'));
+
+  const pw = document.getElementById('progressWrap');
+  const pt = document.getElementById('progressText');
+  const pf = document.getElementById('progressFill');
+  pw.classList.add('visible');
+  pf.style.width = '0%';
+
+  let done = 0;
+  const total = schools.length;
+
+  const updateProgress = () => {
+    done++;
+    const pct = Math.round((done / total) * 100);
+    pf.style.width = pct + '%';
+    pt.textContent = `Fetching ${done} / ${total} schools...`;
+  };
+
+  // Fetch in parallel with concurrency limit of 10
+  const CONCURRENCY = 10;
+  const studentResults = new Array(total);
+  const teacherResults = new Array(total);
+
+  async function fetchOne(idx) {
+    const emis = schools[idx]['EMIS'];
+    let sData = null, tData = null;
+    try {
+      const [sr, tr] = await Promise.all([
+        fetch(STUDENT_API(emis)).then(r => r.json()),
+        fetch(TEACHER_API(emis)).then(r => r.json())
+      ]);
+      sData = sr; tData = tr;
+    } catch(e) { /* keep null on error */ }
+    studentResults[idx] = sData;
+    teacherResults[idx] = tData;
+    updateProgress();
+  }
+
+  // Batched concurrency
+  for (let i = 0; i < total; i += CONCURRENCY) {
+    const batch = [];
+    for (let j = i; j < Math.min(i + CONCURRENCY, total); j++) batch.push(fetchOne(j));
+    await Promise.all(batch);
+  }
+
+  pw.classList.remove('visible');
+  document.getElementById('btnFetch').disabled = false;
+
+  // Build table data
+  lastStudentData = schools.map((s, i) => ({ school: s, data: studentResults[i] }));
+  lastTeacherData = schools.map((s, i) => ({ school: s, data: teacherResults[i] }));
+
+  renderTables();
+  renderCards();
+
+  // Date from first successful result
+  const firstDate = (studentResults.find(r => r && r.todayDate) || {}).todayDate;
+  if (firstDate) document.getElementById('headerDate').textContent = firstDate;
+}
+
+// ── Render Tables ─────────────────────────────────────────────
+function parseNum(v) {
+  if (v === null || v === undefined) return 0;
+  return parseInt(String(v).replace(/,/g, '')) || 0;
+}
+
+function rowToObj(item) {
+  const s = item.school;
+  const d = item.data;
   return {
-    p: ((parseInt(a)||0)/total*100).toFixed(1)+"%",
-    a: ((parseInt(b)||0)/total*100).toFixed(1)+"%",
-    marked: total
+    name: s['School Name'] || '—',
+    level: s['Level'] || '—',
+    gender: s['Gender'] || '—',
+    wing: s['Wing'] || '—',
+    present: d ? parseNum(d.present_count) : null,
+    absent: d ? parseNum(d.absent_count) : null,
+    marked: d ? parseNum(d.marked_count) : null,
+    status: d ? (parseNum(d.marked_count) > 0 ? 1 : 0) : -1,
+    error: !d
   };
 }
 
-function renderDailyCard(container, label, data) {
-  const raw = Array.isArray(data) ? data[0] : data;
-  const p = parseInt(raw.present_count)||0;
-  const a = parseInt(raw.absent_count)||0;
-  const marked = p + a;
-  const pP = marked > 0 ? (p/marked*100).toFixed(1)+"%" : "—";
-  const aP = marked > 0 ? (a/marked*100).toFixed(1)+"%" : "—";
-  const dateStr = raw.todayDate || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-
-  container.innerHTML = `
-    <div class="card-header">
-      <span>${label}</span>
-      <span class="date-badge">${dateStr}</span>
-    </div>
-    <div class="stat-body">
-      <div class="stat-row">
-        <div class="metric present"><div class="m-label">Present</div><div class="m-val">${p}</div></div>
-        <div class="metric absent"><div class="m-label">Absent</div><div class="m-val">${a}</div></div>
-        <div class="metric pct-p"><div class="m-label">P %</div><div class="m-val">${pP}</div></div>
-        <div class="metric pct-a"><div class="m-label">A %</div><div class="m-val">${aP}</div></div>
-      </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--color-text-tertiary);text-align:right">Marked: <strong style="color:var(--color-text-secondary)">${marked}</strong></div>
-    </div>`;
-}
-
-function renderCalendar(container, label, data) {
-  const days = data.categories;
-  const weekends = data.weekends || {};
-  const holidays = (data.holidayDates || []).map(Number);
-  const today = new Date().getDate();
-  const currentMonth = new Date().getMonth();
-  const dataMonth = days[days.length-1];
-
-  const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-
-  // Build a map: day -> index in arrays
-  const dayMap = {};
-  days.forEach((d, i) => dayMap[d] = i);
-
-  // Figure out what day of week day-1 falls on
-  const now = new Date();
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  let startDow = firstOfMonth.getDay(); // 0=Sun
-  startDow = startDow === 0 ? 6 : startDow - 1; // convert to Mon=0
-
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-
-  // Totals
-  let totalP=0, totalA=0, totalU=0, daysMarked=0;
-  days.forEach((d,i) => {
-    const p=parseInt(data.present[i])||0;
-    const a=parseInt(data.absent[i])||0;
-    const u=parseInt(data.unmarked[i])||0;
-    totalP+=p; totalA+=a; totalU+=u;
-    if(p+a>0) daysMarked++;
+function sortData(data, col, asc) {
+  return [...data].sort((a, b) => {
+    let va = a[col], vb = b[col];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va === null) va = -Infinity;
+    if (vb === null) vb = -Infinity;
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
   });
-  const totalMarked = totalP+totalA;
-  const overallP = totalMarked>0?(totalP/totalMarked*100).toFixed(1)+"%":"—";
-  const overallA = totalMarked>0?(totalA/totalMarked*100).toFixed(1)+"%":"—";
+}
 
-  let cells = '';
-  for(let blank=0; blank<startDow; blank++) cells += `<div class="day-cell empty"></div>`;
+function statusPill(status, error) {
+  if (error || status === -1) return `<span class="status-pill status-unmarked"><span class="dot"></span>Error</span>`;
+  if (status === 1) return `<span class="status-pill status-marked"><span class="dot"></span>Marked</span>`;
+  return `<span class="status-pill status-unmarked"><span class="dot"></span>Not Marked</span>`;
+}
 
-  for(let d=1; d<=daysInMonth; d++) {
-    const isWeekend = weekends[String(d)];
-    const isHoliday = holidays.includes(d);
-    const isToday = d === today;
-    const idx = dayMap[d];
-    const hasData = idx !== undefined;
-    const p = hasData ? parseInt(data.present[idx])||0 : null;
-    const a = hasData ? parseInt(data.absent[idx])||0 : null;
-    const u = hasData ? parseInt(data.unmarked[idx])||0 : null;
-    const marked = hasData ? p+a : 0;
+function renderTableBody(tbodyId, rawData, tableKey) {
+  const tbody = document.getElementById(tbodyId);
+  const col = sortState[tableKey].col;
+  const asc = sortState[tableKey].asc;
+  const objs = rawData.map(rowToObj);
+  const sorted = sortData(objs, col, asc);
 
-    let cls = 'day-cell';
-    if(isWeekend) cls += ' weekend';
-    if(isHoliday) cls += ' holiday';
-    if(isToday) cls += ' today-cell';
-    else if(hasData && marked>0) cls += ' has-data';
+  // Update sort arrows
+  const table = tbody.closest('table');
+  table.querySelectorAll('th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.col === col);
+    const arrow = th.querySelector('.sort-arrow');
+    if (th.dataset.col === col) arrow.textContent = asc ? ' ↑' : ' ↓';
+    else arrow.textContent = ' ↕';
+  });
 
-    let inner = `<span class="dc-num">${d}</span>`;
-    if(isWeekend) {
-      inner += `<span style="font-size:9px;color:var(--color-text-tertiary)">Off</span>`;
-    } else if(hasData && marked>0) {
-      inner += `<span class="dc-p">${p}</span><span class="dc-a">${a}</span>`;
-      if(u>0) inner += `<span class="dc-u">${u}u</span>`;
-    } else if(hasData && u>0) {
-      inner += `<span class="dc-u" style="font-size:11px">${u}u</span>`;
-    }
+  tbody.innerHTML = sorted.map(r => `
+    <tr>
+      <td class="school-name">${r.name}</td>
+      <td>${r.level}</td>
+      <td>${r.gender}</td>
+      <td class="num present">${r.present !== null ? r.present.toLocaleString() : '—'}</td>
+      <td class="num absent">${r.absent !== null ? r.absent.toLocaleString() : '—'}</td>
+      <td class="num total">${r.marked !== null ? r.marked.toLocaleString() : '—'}</td>
+      <td>${statusPill(r.status, r.error)}</td>
+    </tr>
+  `).join('');
 
-    cells += `<div class="${cls}">${inner}</div>`;
+  const badge = tbodyId === 'studentsTbody' ? 'sBadge' : 'tBadge';
+  document.getElementById(badge).textContent = `${sorted.length} school${sorted.length !== 1 ? 's' : ''}`;
+}
+
+function renderTables() {
+  renderTableBody('studentsTbody', lastStudentData, 's');
+  renderTableBody('teachersTbody', lastTeacherData, 't');
+  document.getElementById('tablesWrap').classList.add('visible');
+}
+
+// Sortable headers
+document.querySelectorAll('th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    const key = th.dataset.table;
+    if (sortState[key].col === col) sortState[key].asc = !sortState[key].asc;
+    else { sortState[key].col = col; sortState[key].asc = true; }
+    renderTables();
+  });
+});
+
+// ── Summary Cards ─────────────────────────────────────────────
+function renderCards() {
+  const sums = { sPresent: 0, sAbsent: 0, sMarked: 0, sUnmarked: 0, tPresent: 0, tAbsent: 0, tMarked: 0, tUnmarked: 0 };
+  lastStudentData.forEach(({ data: d }) => {
+    if (!d) return;
+    sums.sPresent += parseNum(d.present_count);
+    sums.sAbsent += parseNum(d.absent_count);
+    if (parseNum(d.marked_count) > 0) sums.sMarked++; else sums.sUnmarked++;
+  });
+  lastTeacherData.forEach(({ data: d }) => {
+    if (!d) return;
+    sums.tPresent += parseNum(d.present_count);
+    sums.tAbsent += parseNum(d.absent_count);
+    if (parseNum(d.marked_count) > 0) sums.tMarked++; else sums.tUnmarked++;
+  });
+
+  document.getElementById('cSchools').textContent = lastStudentData.length;
+  document.getElementById('cSPresent').textContent = sums.sPresent.toLocaleString();
+  document.getElementById('cSAbsent').textContent = `Absent: ${sums.sAbsent.toLocaleString()}`;
+  const sMarkedPct = lastStudentData.length ? Math.round(sums.sMarked / lastStudentData.length * 100) : 0;
+  document.getElementById('cSMarked').textContent = `${sums.sMarked} / ${lastStudentData.length}`;
+  document.getElementById('cSMarked').className = `card-value ${sMarkedPct === 100 ? 'green' : sMarkedPct > 50 ? 'blue' : 'red'}`;
+  document.getElementById('cSUnmarked').textContent = `Not marked: ${sums.sUnmarked}`;
+
+  document.getElementById('cTPresent').textContent = sums.tPresent.toLocaleString();
+  document.getElementById('cTAbsent').textContent = `Absent: ${sums.tAbsent.toLocaleString()}`;
+  const tMarkedPct = lastTeacherData.length ? Math.round(sums.tMarked / lastTeacherData.length * 100) : 0;
+  document.getElementById('cTMarked').textContent = `${sums.tMarked} / ${lastTeacherData.length}`;
+  document.getElementById('cTMarked').className = `card-value ${tMarkedPct === 100 ? 'green' : tMarkedPct > 50 ? 'blue' : 'red'}`;
+  document.getElementById('cTUnmarked').textContent = `Not marked: ${sums.tUnmarked}`;
+
+  document.querySelectorAll('.card').forEach(c => c.classList.add('visible'));
+}
+
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = msg;
+  document.getElementById('errorState').classList.add('visible');
+  document.getElementById('emptyState').classList.remove('visible');
+}
+
+// ── Init: Load CSV ────────────────────────────────────────────
+(async function init() {
+  try {
+    const resp = await fetch(CSV_URL);
+    const text = await resp.text();
+    allRows = parseCSV(text);
+    const districts = unique(allRows.map(r => r['District']));
+    fillSelect(document.getElementById('selDistrict'), districts, '— Select District —');
+  } catch (e) {
+    showError('Failed to load school data from Google Sheets. Check CSV URL or network.');
   }
-
-  container.innerHTML = `
-    <div class="card-header">
-      <span>${label}</span>
-      <span class="date-badge">${daysMarked} days marked</span>
-    </div>
-    <div class="cal-day-headers">
-      ${DAY_NAMES.map(n=>`<span>${n}</span>`).join('')}
-    </div>
-    <div class="calendar-grid">${cells}</div>
-    <div class="cal-legend">
-      <span><i class="dot p"></i> Present</span>
-      <span><i class="dot a"></i> Absent</span>
-      <span><i class="dot u"></i> Unmarked</span>
-      <span style="color:var(--color-text-tertiary)">Shaded border = today</span>
-    </div>
-    <div class="summary-bar">
-      <div class="sb-item"><div class="sb-label">Total present</div><div class="sb-val p">${totalP.toLocaleString()}</div></div>
-      <div class="sb-item"><div class="sb-label">Total absent</div><div class="sb-val a">${totalA.toLocaleString()}</div></div>
-      <div class="sb-item"><div class="sb-label">Overall P %</div><div class="sb-val p">${overallP}</div></div>
-      <div class="sb-item"><div class="sb-label">Unmarked days</div><div class="sb-val">${totalU.toLocaleString()}</div></div>
-    </div>`;
-}
-
-async function fetchAll() {
-  const emis = document.getElementById('emisInput').value.trim();
-  if(!emis) return;
-  const btn = document.getElementById('fetchBtn');
-  btn.classList.add('loading'); btn.textContent = 'Fetching…';
-
-  const tTeacher = document.getElementById('daily-teacher');
-  const tStudent = document.getElementById('daily-student');
-  const mTeacher = document.getElementById('monthly-teacher');
-  const mStudent = document.getElementById('monthly-student');
-
-  tTeacher.innerHTML = mTeacher.innerHTML = `<div class="loading-pulse">Loading…</div>`;
-  tStudent.innerHTML = mStudent.innerHTML = `<div class="loading-pulse">Loading…</div>`;
-
-  // Daily teacher
-  fetchWithFallback(`${BASE}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`)
-    .then(d => renderDailyCard(tTeacher, 'Teachers', d))
-    .catch(() => tTeacher.innerHTML = `<div class="error-msg">Could not load teacher attendance</div>`);
-
-  // Daily student
-  fetchWithFallback(`${BASE}get_today_attendance_stats?s_id_emis_code=${emis}`)
-    .then(d => renderDailyCard(tStudent, 'Students', d))
-    .catch(() => tStudent.innerHTML = `<div class="error-msg">Could not load student attendance</div>`);
-
-  // Monthly teacher
-  fetchWithFallback(`${BASE}get_teachers_attendance_line_stats?month=scma&s_id_emis_code=${emis}`)
-    .then(d => renderCalendar(mTeacher, 'Teacher monthly log', d))
-    .catch(() => mTeacher.innerHTML = `<div class="error-msg">Could not load teacher monthly data</div>`);
-
-  // Monthly student
-  fetchWithFallback(`${BASE}get_attendance_line_stats?month=scma&s_id_emis_code=${emis}`)
-    .then(d => renderCalendar(mStudent, 'Student monthly log', d))
-    .catch(() => mStudent.innerHTML = `<div class="error-msg">Could not load student monthly data</div>`);
-
-  setTimeout(() => { btn.classList.remove('loading'); btn.textContent = 'Fetch data'; }, 3000);
-}
-
-fetchAll();
+})();
 </script>
 </body>
 </html>
