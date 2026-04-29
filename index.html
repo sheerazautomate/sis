@@ -446,9 +446,30 @@
 
 <script>
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
-const PROXY = "https://corsproxy.io/?url=";
-const STUDENT_API = emis => `${PROXY}${encodeURIComponent(`https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`)}`;
-const TEACHER_API = emis => `${PROXY}${encodeURIComponent(`https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`)}`;
+const PROXIES = [
+  "https://corsproxy.io/?url=",
+  "https://api.allorigins.win/raw?url=",
+  "https://thingproxy.freeboard.io/fetch/"
+];
+const STUDENT_BASE = emis => `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
+const TEACHER_BASE = emis => `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function fetchWithRetry(baseFn, emis) {
+  for (let attempt = 0; attempt < PROXIES.length * 2; attempt++) {
+    const proxy = PROXIES[attempt % PROXIES.length];
+    const url = proxy + encodeURIComponent(baseFn(emis));
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (data && ('present_count' in data || 'marked_count' in data)) return data;
+      throw new Error('Bad shape');
+    } catch(e) {
+      if (attempt < PROXIES.length * 2 - 1) await sleep(200 * (attempt + 1));
+    }
+  }
+  return null;
+};
 
 let allRows = [];
 let sortState = { s: { col: 'status', asc: true }, t: { col: 'status', asc: true } };
@@ -582,14 +603,10 @@ async function fetchAttendance() {
 
   async function fetchOne(idx) {
     const emis = schools[idx]['EMIS'];
-    let sData = null, tData = null;
-    try {
-      const [sr, tr] = await Promise.all([
-        fetch(STUDENT_API(emis)).then(r => r.json()),
-        fetch(TEACHER_API(emis)).then(r => r.json())
-      ]);
-      sData = sr; tData = tr;
-    } catch(e) { /* keep null on error */ }
+    const [sData, tData] = await Promise.all([
+      fetchWithRetry(STUDENT_BASE, emis),
+      fetchWithRetry(TEACHER_BASE, emis)
+    ]);
     studentResults[idx] = sData;
     teacherResults[idx] = tData;
     updateProgress();
