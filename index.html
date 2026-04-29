@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIS Data Portal - Layyah</title>
+    <title>SIS Dashboard | Layyah</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .table-container { @apply bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8; }
         th { @apply px-4 py-3 bg-slate-50 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200; }
         td { @apply px-4 py-3 text-sm text-slate-600 border-b border-slate-100; }
-        tr:last-child td { border-b: 0; }
-        .highlight-row { @apply bg-blue-50/30; }
+        .highlight-row { @apply bg-blue-50/40; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4 md:p-8 font-sans">
@@ -24,19 +23,19 @@
             <div class="flex gap-2">
                 <input type="text" id="emisInput" value="32230085" 
                        class="w-36 border border-slate-300 rounded-lg px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                <button onclick="fetchAll()" class="bg-slate-900 hover:bg-black text-white text-xs font-bold px-6 py-2 rounded-lg transition-all active:scale-95">
+                <button onclick="fetchAll()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-2 rounded-lg transition-all shadow-lg shadow-blue-100">
                     FETCH DATA
                 </button>
             </div>
         </div>
 
-        <h2 class="text-sm font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Live Daily Stats</h2>
+        <h2 class="text-[11px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Daily Attendance (Today)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <div id="daily-teacher" class="table-container"></div>
             <div id="daily-student" class="table-container"></div>
         </div>
 
-        <h2 class="text-sm font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Monthly Attendance Logs</h2>
+        <h2 class="text-[11px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Monthly Attendance Logs</h2>
         <div id="monthly-teacher" class="table-container"></div>
         <div id="monthly-student" class="table-container"></div>
     </div>
@@ -45,59 +44,71 @@
         const PROXY = "https://corsproxy.io/?url=";
         const BASE_URL = "https://sis.pesrp.edu.pk/attendance/";
 
-        function calculateStats(present, absent) {
-            const p = parseInt(present) || 0;
-            const a = parseInt(absent) || 0;
-            const marked = p + a;
-            const pPerc = marked > 0 ? ((p / marked) * 100).toFixed(1) : "0.0";
-            const aPerc = marked > 0 ? ((a / marked) * 100).toFixed(1) : "0.0";
-            return { marked, pPerc, aPerc };
+        // Helper to convert strings like "306,475" or "4" to clean numbers
+        function cleanNum(val) {
+            if (typeof val === 'string') {
+                return parseInt(val.replace(/,/g, '')) || 0;
+            }
+            return parseInt(val) || 0;
+        }
+
+        // Percentage Calculation Logic
+        function calculateStats(p, a, m) {
+            const present = cleanNum(p);
+            const absent = cleanNum(a);
+            // Use provided marked_count if available, otherwise sum p + a
+            const marked = m ? cleanNum(m) : (present + absent);
+            
+            const pPerc = marked > 0 ? ((present / marked) * 100).toFixed(1) : "0.0";
+            const aPerc = marked > 0 ? ((absent / marked) * 100).toFixed(1) : "0.0";
+            
+            return { present, absent, marked, pPerc, aPerc };
         }
 
         async function fetchAll() {
             const emis = document.getElementById('emisInput').value;
-            const todayDate = new Date().toLocaleDateString('en-GB');
-
-            // 1. Fetch Daily Stats
-            fetchDaily(`${BASE_URL}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-teacher', 'Teacher Today', todayDate);
-            fetchDaily(`${BASE_URL}get_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-student', 'Student Today', todayDate);
-
-            // 2. Fetch Monthly Logs (Line Stats)
+            
+            // Fetch Daily (Today)
+            fetchDaily(`${BASE_URL}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-teacher', 'Teachers');
+            fetchDaily(`${BASE_URL}get_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-student', 'Students');
+            
+            // Fetch Monthly (Line Stats)
             fetchMonthly(`${BASE_URL}get_teachers_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'monthly-teacher', 'Teacher Monthly Log');
             fetchMonthly(`${BASE_URL}get_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'monthly-student', 'Student Monthly Log');
         }
 
-        async function fetchDaily(url, targetId, title, dateStr) {
+        async function fetchDaily(url, targetId, typeLabel) {
             const container = document.getElementById(targetId);
-            container.innerHTML = `<div class="p-6 text-xs text-slate-400">Loading ${title}...</div>`;
+            container.innerHTML = `<div class="p-6 text-xs text-slate-400 animate-pulse">Loading ${typeLabel}...</div>`;
             try {
                 const res = await fetch(PROXY + encodeURIComponent(url));
                 const data = await res.json();
-                const row = Array.isArray(data) ? data[0] : data;
-                
-                const stats = calculateStats(row.present, row.absent);
+                const raw = Array.isArray(data) ? data[0] : data;
+
+                // Targeting specific keys: present_count, absent_count, marked_count
+                const stats = calculateStats(raw.present_count, raw.absent_count, raw.marked_count);
 
                 container.innerHTML = `
-                    <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase">${title}</div>
+                    <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase">${typeLabel} Today</div>
                     <table class="w-full">
                         <thead><tr><th>Date</th><th>Present</th><th>Absent</th><th>Marked</th><th>P %</th><th>A %</th></tr></thead>
                         <tbody>
                             <tr>
-                                <td>${dateStr}</td>
-                                <td class="font-bold text-green-600">${row.present || 0}</td>
-                                <td class="font-bold text-red-600">${row.absent || 0}</td>
+                                <td class="font-bold text-slate-900">${raw.todayDate || 'N/A'}</td>
+                                <td class="text-green-600 font-bold">${stats.present}</td>
+                                <td class="text-red-600 font-bold">${stats.absent}</td>
                                 <td>${stats.marked}</td>
-                                <td class="bg-green-50/50 font-bold">${stats.pPerc}%</td>
-                                <td class="bg-red-50/50 font-bold">${stats.aPerc}%</td>
+                                <td class="bg-green-50/50 font-black">${stats.pPerc}%</td>
+                                <td class="bg-red-50/50 font-black">${stats.aPerc}%</td>
                             </tr>
                         </tbody>
                     </table>`;
-            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">Error loading ${title}</div>`; }
+            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">API Error on Daily Fetch</div>`; }
         }
 
         async function fetchMonthly(url, targetId, title) {
             const container = document.getElementById(targetId);
-            container.innerHTML = `<div class="p-6 text-xs text-slate-400">Loading ${title}...</div>`;
+            container.innerHTML = `<div class="p-6 text-xs text-slate-400 animate-pulse">Loading ${title}...</div>`;
             try {
                 const res = await fetch(PROXY + encodeURIComponent(url));
                 const data = await res.json();
@@ -105,31 +116,27 @@
                 let html = `<div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase">${title}</div>`;
                 html += `<table class="w-full"><thead><tr><th>Day</th><th>Present</th><th>Absent</th><th>Marked</th><th>P %</th><th>A %</th></tr></thead><tbody>`;
 
-                // Map through the 'categories' array which represents the days
                 data.categories.forEach((day, index) => {
-                    const p = data.present[index] || 0;
-                    const a = data.absent[index] || 0;
-                    const stats = calculateStats(p, a);
-                    
-                    // Only highlight days where attendance was actually marked
+                    // Monthly structure uses arrays: present[i] and absent[i]
+                    const stats = calculateStats(data.present[index], data.absent[index]);
                     const rowClass = stats.marked > 0 ? 'highlight-row' : '';
 
                     html += `<tr class="${rowClass}">
-                        <td class="font-bold">Day ${day}</td>
-                        <td>${p}</td>
-                        <td>${a}</td>
+                        <td class="font-bold text-slate-400">Day ${day}</td>
+                        <td class="text-green-700 font-medium">${stats.present}</td>
+                        <td class="text-red-700 font-medium">${stats.absent}</td>
                         <td>${stats.marked}</td>
-                        <td class="font-bold text-green-700">${stats.pPerc}%</td>
-                        <td class="font-bold text-red-700">${stats.aPerc}%</td>
+                        <td class="font-black text-slate-800">${stats.pPerc}%</td>
+                        <td class="font-black text-slate-800">${stats.aPerc}%</td>
                     </tr>`;
                 });
 
                 html += `</tbody></table>`;
                 container.innerHTML = html;
-            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">Error loading ${title}</div>`; }
+            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">API Error on Monthly Fetch</div>`; }
         }
 
-        // Run on load
+        // Run fetch on initial load
         fetchAll();
     </script>
 </body>
