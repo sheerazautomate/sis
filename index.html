@@ -1,143 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIS Dashboard | Layyah</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .table-container { @apply bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8; }
-        th { @apply px-4 py-3 bg-slate-50 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200; }
-        td { @apply px-4 py-3 text-sm text-slate-600 border-b border-slate-100; }
-        .highlight-row { @apply bg-blue-50/40; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIS Attendance Monitor</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font-sans,system-ui,sans-serif);background:var(--color-background-tertiary,#f5f5f3);min-height:100vh;padding:20px}
+  .header{background:var(--color-background-primary,#fff);border:0.5px solid var(--color-border-tertiary,rgba(0,0,0,0.12));border-radius:var(--border-radius-lg,12px);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .header-left h1{font-size:18px;font-weight:500;color:var(--color-text-primary,#1a1a1a)}
+  .header-left p{font-size:12px;color:var(--color-text-secondary,#666);margin-top:2px}
+  .fetch-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .fetch-row input{height:36px;padding:0 12px;border:0.5px solid var(--color-border-secondary,rgba(0,0,0,0.25));border-radius:var(--border-radius-md,8px);font-size:13px;font-weight:500;background:var(--color-background-primary);color:var(--color-text-primary);outline:none;width:130px}
+  .fetch-row input:focus{box-shadow:0 0 0 2px rgba(59,130,246,0.25)}
+  .fetch-row button{height:36px;padding:0 18px;border:0.5px solid var(--color-border-secondary,rgba(0,0,0,0.25));border-radius:var(--border-radius-md,8px);font-size:12px;font-weight:500;background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;transition:background 0.15s}
+  .fetch-row button:hover{background:var(--color-background-secondary,#f0f0ee)}
+  .fetch-row button.loading{opacity:0.6;pointer-events:none}
+  .section-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;padding-left:2px}
+  .daily-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+  @media(max-width:580px){.daily-grid{grid-template-columns:1fr}}
+  .stat-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary,rgba(0,0,0,0.12));border-radius:var(--border-radius-lg,12px);overflow:hidden}
+  .card-header{padding:12px 16px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between}
+  .card-header span{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em}
+  .card-header .date-badge{font-size:11px;color:var(--color-text-tertiary,#999);background:var(--color-background-secondary);padding:2px 8px;border-radius:20px;border:0.5px solid var(--color-border-tertiary)}
+  .stat-body{padding:16px}
+  .stat-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+  .metric{background:var(--color-background-secondary,#f5f5f3);border-radius:var(--border-radius-md,8px);padding:10px 12px}
+  .metric .m-label{font-size:10px;color:var(--color-text-tertiary,#999);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px}
+  .metric .m-val{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+  .metric.present .m-val{color:#1d9e75}
+  .metric.absent .m-val{color:#d85a30}
+  .metric.pct-p .m-val{color:#1d9e75}
+  .metric.pct-a .m-val{color:#d85a30}
+  .loading-pulse{padding:28px 16px;text-align:center;font-size:12px;color:var(--color-text-tertiary);animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .error-msg{padding:16px;font-size:12px;color:#d85a30}
+  .monthly-section{margin-bottom:22px}
+  .monthly-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg,12px);overflow:hidden}
+  .monthly-card .card-header{padding:12px 16px}
+  .calendar-grid{padding:14px 16px;display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .day-cell{border-radius:var(--border-radius-md,8px);padding:6px 4px;text-align:center;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;border:0.5px solid transparent}
+  .day-cell .dc-num{font-size:11px;font-weight:500;color:var(--color-text-tertiary)}
+  .day-cell .dc-p{font-size:13px;font-weight:500;color:#1d9e75}
+  .day-cell .dc-a{font-size:11px;color:#d85a30}
+  .day-cell .dc-u{font-size:10px;color:var(--color-text-tertiary)}
+  .day-cell.has-data{background:var(--color-background-secondary);border-color:var(--color-border-tertiary)}
+  .day-cell.weekend{opacity:0.45}
+  .day-cell.holiday{opacity:0.45}
+  .day-cell.today-cell{border:1.5px solid #378add;background:#e6f1fb}
+  .day-cell.empty{opacity:0}
+  .cal-legend{display:flex;gap:16px;padding:0 16px 12px;flex-wrap:wrap}
+  .cal-legend span{font-size:11px;color:var(--color-text-secondary);display:flex;align-items:center;gap:4px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .dot.p{background:#1d9e75}
+  .dot.a{background:#d85a30}
+  .dot.u{background:var(--color-border-secondary)}
+  .cal-day-headers{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:0 16px 4px}
+  .cal-day-headers span{font-size:10px;text-align:center;color:var(--color-text-tertiary);font-weight:500;text-transform:uppercase}
+  .summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 16px;border-top:0.5px solid var(--color-border-tertiary);margin-top:4px}
+  .summary-bar .sb-item{text-align:center}
+  .summary-bar .sb-label{font-size:10px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.05em}
+  .summary-bar .sb-val{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+  .summary-bar .sb-val.p{color:#1d9e75}
+  .summary-bar .sb-val.a{color:#d85a30}
+</style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 md:p-8 font-sans">
+<body>
 
-    <div class="max-w-5xl mx-auto">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <div>
-                <h1 class="text-2xl font-black text-slate-800 tracking-tight">SIS MONITOR</h1>
-                <p class="text-xs font-bold text-blue-600 uppercase">District Education Authority Layyah</p>
-            </div>
-            <div class="flex gap-2">
-                <input type="text" id="emisInput" value="32230085" 
-                       class="w-36 border border-slate-300 rounded-lg px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                <button onclick="fetchAll()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-2 rounded-lg transition-all shadow-lg shadow-blue-100">
-                    FETCH DATA
-                </button>
-            </div>
-        </div>
+<div class="header">
+  <div class="header-left">
+    <h1>SIS attendance monitor</h1>
+    <p>Punjab Education Student Information System</p>
+  </div>
+  <div class="fetch-row">
+    <input type="text" id="emisInput" value="32230085" placeholder="EMIS code">
+    <button onclick="fetchAll()" id="fetchBtn">Fetch data</button>
+  </div>
+</div>
 
-        <h2 class="text-[11px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Daily Attendance (Today)</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <div id="daily-teacher" class="table-container"></div>
-            <div id="daily-student" class="table-container"></div>
-        </div>
+<div class="section-label">Daily attendance — today</div>
+<div class="daily-grid">
+  <div class="stat-card" id="daily-teacher"><div class="loading-pulse">Loading teachers…</div></div>
+  <div class="stat-card" id="daily-student"><div class="loading-pulse">Loading students…</div></div>
+</div>
 
-        <h2 class="text-[11px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Monthly Attendance Logs</h2>
-        <div id="monthly-teacher" class="table-container"></div>
-        <div id="monthly-student" class="table-container"></div>
+<div class="section-label">Monthly attendance — calendar view</div>
+<div class="monthly-section">
+  <div class="monthly-card" id="monthly-teacher"><div class="loading-pulse">Loading teacher log…</div></div>
+</div>
+<div class="monthly-section">
+  <div class="monthly-card" id="monthly-student"><div class="loading-pulse">Loading student log…</div></div>
+</div>
+
+<script>
+const PROXIES = [
+  "https://corsproxy.io/?url=",
+  "https://api.allorigins.win/raw?url=",
+  "https://proxy.cors.sh/"
+];
+const BASE = "https://sis.pesrp.edu.pk/attendance/";
+
+async function fetchWithFallback(url) {
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      const res = await fetch(PROXIES[i] + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
+      if (!res.ok) continue;
+      const data = await res.json();
+      return data;
+    } catch(e) {
+      if (i === PROXIES.length - 1) throw e;
+    }
+  }
+}
+
+function pct(a, b) {
+  const total = (parseInt(a)||0) + (parseInt(b)||0);
+  if (!total) return {p:"—", a:"—", marked:0};
+  return {
+    p: ((parseInt(a)||0)/total*100).toFixed(1)+"%",
+    a: ((parseInt(b)||0)/total*100).toFixed(1)+"%",
+    marked: total
+  };
+}
+
+function renderDailyCard(container, label, data) {
+  const raw = Array.isArray(data) ? data[0] : data;
+  const p = parseInt(raw.present_count)||0;
+  const a = parseInt(raw.absent_count)||0;
+  const marked = p + a;
+  const pP = marked > 0 ? (p/marked*100).toFixed(1)+"%" : "—";
+  const aP = marked > 0 ? (a/marked*100).toFixed(1)+"%" : "—";
+  const dateStr = raw.todayDate || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+
+  container.innerHTML = `
+    <div class="card-header">
+      <span>${label}</span>
+      <span class="date-badge">${dateStr}</span>
     </div>
+    <div class="stat-body">
+      <div class="stat-row">
+        <div class="metric present"><div class="m-label">Present</div><div class="m-val">${p}</div></div>
+        <div class="metric absent"><div class="m-label">Absent</div><div class="m-val">${a}</div></div>
+        <div class="metric pct-p"><div class="m-label">P %</div><div class="m-val">${pP}</div></div>
+        <div class="metric pct-a"><div class="m-label">A %</div><div class="m-val">${aP}</div></div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--color-text-tertiary);text-align:right">Marked: <strong style="color:var(--color-text-secondary)">${marked}</strong></div>
+    </div>`;
+}
 
-    <script>
-        const PROXY = "https://corsproxy.io/?url=";
-        const BASE_URL = "https://sis.pesrp.edu.pk/attendance/";
+function renderCalendar(container, label, data) {
+  const days = data.categories;
+  const weekends = data.weekends || {};
+  const holidays = (data.holidayDates || []).map(Number);
+  const today = new Date().getDate();
+  const currentMonth = new Date().getMonth();
+  const dataMonth = days[days.length-1];
 
-        // Helper to convert strings like "306,475" or "4" to clean numbers
-        function cleanNum(val) {
-            if (typeof val === 'string') {
-                return parseInt(val.replace(/,/g, '')) || 0;
-            }
-            return parseInt(val) || 0;
-        }
+  const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-        // Percentage Calculation Logic
-        function calculateStats(p, a, m) {
-            const present = cleanNum(p);
-            const absent = cleanNum(a);
-            // Use provided marked_count if available, otherwise sum p + a
-            const marked = m ? cleanNum(m) : (present + absent);
-            
-            const pPerc = marked > 0 ? ((present / marked) * 100).toFixed(1) : "0.0";
-            const aPerc = marked > 0 ? ((absent / marked) * 100).toFixed(1) : "0.0";
-            
-            return { present, absent, marked, pPerc, aPerc };
-        }
+  // Build a map: day -> index in arrays
+  const dayMap = {};
+  days.forEach((d, i) => dayMap[d] = i);
 
-        async function fetchAll() {
-            const emis = document.getElementById('emisInput').value;
-            
-            // Fetch Daily (Today)
-            fetchDaily(`${BASE_URL}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-teacher', 'Teachers');
-            fetchDaily(`${BASE_URL}get_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-student', 'Students');
-            
-            // Fetch Monthly (Line Stats)
-            fetchMonthly(`${BASE_URL}get_teachers_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'monthly-teacher', 'Teacher Monthly Log');
-            fetchMonthly(`${BASE_URL}get_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'monthly-student', 'Student Monthly Log');
-        }
+  // Figure out what day of week day-1 falls on
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  let startDow = firstOfMonth.getDay(); // 0=Sun
+  startDow = startDow === 0 ? 6 : startDow - 1; // convert to Mon=0
 
-        async function fetchDaily(url, targetId, typeLabel) {
-            const container = document.getElementById(targetId);
-            container.innerHTML = `<div class="p-6 text-xs text-slate-400 animate-pulse">Loading ${typeLabel}...</div>`;
-            try {
-                const res = await fetch(PROXY + encodeURIComponent(url));
-                const data = await res.json();
-                const raw = Array.isArray(data) ? data[0] : data;
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
 
-                // Targeting specific keys: present_count, absent_count, marked_count
-                const stats = calculateStats(raw.present_count, raw.absent_count, raw.marked_count);
+  // Totals
+  let totalP=0, totalA=0, totalU=0, daysMarked=0;
+  days.forEach((d,i) => {
+    const p=parseInt(data.present[i])||0;
+    const a=parseInt(data.absent[i])||0;
+    const u=parseInt(data.unmarked[i])||0;
+    totalP+=p; totalA+=a; totalU+=u;
+    if(p+a>0) daysMarked++;
+  });
+  const totalMarked = totalP+totalA;
+  const overallP = totalMarked>0?(totalP/totalMarked*100).toFixed(1)+"%":"—";
+  const overallA = totalMarked>0?(totalA/totalMarked*100).toFixed(1)+"%":"—";
 
-                container.innerHTML = `
-                    <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase">${typeLabel} Today</div>
-                    <table class="w-full">
-                        <thead><tr><th>Date</th><th>Present</th><th>Absent</th><th>Marked</th><th>P %</th><th>A %</th></tr></thead>
-                        <tbody>
-                            <tr>
-                                <td class="font-bold text-slate-900">${raw.todayDate || 'N/A'}</td>
-                                <td class="text-green-600 font-bold">${stats.present}</td>
-                                <td class="text-red-600 font-bold">${stats.absent}</td>
-                                <td>${stats.marked}</td>
-                                <td class="bg-green-50/50 font-black">${stats.pPerc}%</td>
-                                <td class="bg-red-50/50 font-black">${stats.aPerc}%</td>
-                            </tr>
-                        </tbody>
-                    </table>`;
-            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">API Error on Daily Fetch</div>`; }
-        }
+  let cells = '';
+  for(let blank=0; blank<startDow; blank++) cells += `<div class="day-cell empty"></div>`;
 
-        async function fetchMonthly(url, targetId, title) {
-            const container = document.getElementById(targetId);
-            container.innerHTML = `<div class="p-6 text-xs text-slate-400 animate-pulse">Loading ${title}...</div>`;
-            try {
-                const res = await fetch(PROXY + encodeURIComponent(url));
-                const data = await res.json();
-                
-                let html = `<div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase">${title}</div>`;
-                html += `<table class="w-full"><thead><tr><th>Day</th><th>Present</th><th>Absent</th><th>Marked</th><th>P %</th><th>A %</th></tr></thead><tbody>`;
+  for(let d=1; d<=daysInMonth; d++) {
+    const isWeekend = weekends[String(d)];
+    const isHoliday = holidays.includes(d);
+    const isToday = d === today;
+    const idx = dayMap[d];
+    const hasData = idx !== undefined;
+    const p = hasData ? parseInt(data.present[idx])||0 : null;
+    const a = hasData ? parseInt(data.absent[idx])||0 : null;
+    const u = hasData ? parseInt(data.unmarked[idx])||0 : null;
+    const marked = hasData ? p+a : 0;
 
-                data.categories.forEach((day, index) => {
-                    // Monthly structure uses arrays: present[i] and absent[i]
-                    const stats = calculateStats(data.present[index], data.absent[index]);
-                    const rowClass = stats.marked > 0 ? 'highlight-row' : '';
+    let cls = 'day-cell';
+    if(isWeekend) cls += ' weekend';
+    if(isHoliday) cls += ' holiday';
+    if(isToday) cls += ' today-cell';
+    else if(hasData && marked>0) cls += ' has-data';
 
-                    html += `<tr class="${rowClass}">
-                        <td class="font-bold text-slate-400">Day ${day}</td>
-                        <td class="text-green-700 font-medium">${stats.present}</td>
-                        <td class="text-red-700 font-medium">${stats.absent}</td>
-                        <td>${stats.marked}</td>
-                        <td class="font-black text-slate-800">${stats.pPerc}%</td>
-                        <td class="font-black text-slate-800">${stats.aPerc}%</td>
-                    </tr>`;
-                });
+    let inner = `<span class="dc-num">${d}</span>`;
+    if(isWeekend) {
+      inner += `<span style="font-size:9px;color:var(--color-text-tertiary)">Off</span>`;
+    } else if(hasData && marked>0) {
+      inner += `<span class="dc-p">${p}</span><span class="dc-a">${a}</span>`;
+      if(u>0) inner += `<span class="dc-u">${u}u</span>`;
+    } else if(hasData && u>0) {
+      inner += `<span class="dc-u" style="font-size:11px">${u}u</span>`;
+    }
 
-                html += `</tbody></table>`;
-                container.innerHTML = html;
-            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">API Error on Monthly Fetch</div>`; }
-        }
+    cells += `<div class="${cls}">${inner}</div>`;
+  }
 
-        // Run fetch on initial load
-        fetchAll();
-    </script>
+  container.innerHTML = `
+    <div class="card-header">
+      <span>${label}</span>
+      <span class="date-badge">${daysMarked} days marked</span>
+    </div>
+    <div class="cal-day-headers">
+      ${DAY_NAMES.map(n=>`<span>${n}</span>`).join('')}
+    </div>
+    <div class="calendar-grid">${cells}</div>
+    <div class="cal-legend">
+      <span><i class="dot p"></i> Present</span>
+      <span><i class="dot a"></i> Absent</span>
+      <span><i class="dot u"></i> Unmarked</span>
+      <span style="color:var(--color-text-tertiary)">Shaded border = today</span>
+    </div>
+    <div class="summary-bar">
+      <div class="sb-item"><div class="sb-label">Total present</div><div class="sb-val p">${totalP.toLocaleString()}</div></div>
+      <div class="sb-item"><div class="sb-label">Total absent</div><div class="sb-val a">${totalA.toLocaleString()}</div></div>
+      <div class="sb-item"><div class="sb-label">Overall P %</div><div class="sb-val p">${overallP}</div></div>
+      <div class="sb-item"><div class="sb-label">Unmarked days</div><div class="sb-val">${totalU.toLocaleString()}</div></div>
+    </div>`;
+}
+
+async function fetchAll() {
+  const emis = document.getElementById('emisInput').value.trim();
+  if(!emis) return;
+  const btn = document.getElementById('fetchBtn');
+  btn.classList.add('loading'); btn.textContent = 'Fetching…';
+
+  const tTeacher = document.getElementById('daily-teacher');
+  const tStudent = document.getElementById('daily-student');
+  const mTeacher = document.getElementById('monthly-teacher');
+  const mStudent = document.getElementById('monthly-student');
+
+  tTeacher.innerHTML = mTeacher.innerHTML = `<div class="loading-pulse">Loading…</div>`;
+  tStudent.innerHTML = mStudent.innerHTML = `<div class="loading-pulse">Loading…</div>`;
+
+  // Daily teacher
+  fetchWithFallback(`${BASE}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`)
+    .then(d => renderDailyCard(tTeacher, 'Teachers', d))
+    .catch(() => tTeacher.innerHTML = `<div class="error-msg">Could not load teacher attendance</div>`);
+
+  // Daily student
+  fetchWithFallback(`${BASE}get_today_attendance_stats?s_id_emis_code=${emis}`)
+    .then(d => renderDailyCard(tStudent, 'Students', d))
+    .catch(() => tStudent.innerHTML = `<div class="error-msg">Could not load student attendance</div>`);
+
+  // Monthly teacher
+  fetchWithFallback(`${BASE}get_teachers_attendance_line_stats?month=scma&s_id_emis_code=${emis}`)
+    .then(d => renderCalendar(mTeacher, 'Teacher monthly log', d))
+    .catch(() => mTeacher.innerHTML = `<div class="error-msg">Could not load teacher monthly data</div>`);
+
+  // Monthly student
+  fetchWithFallback(`${BASE}get_attendance_line_stats?month=scma&s_id_emis_code=${emis}`)
+    .then(d => renderCalendar(mStudent, 'Student monthly log', d))
+    .catch(() => mStudent.innerHTML = `<div class="error-msg">Could not load student monthly data</div>`);
+
+  setTimeout(() => { btn.classList.remove('loading'); btn.textContent = 'Fetch data'; }, 3000);
+}
+
+fetchAll();
+</script>
 </body>
 </html>
