@@ -3,126 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIS Dashboard - Layyah</title>
+    <title>SIS Data Portal - Layyah</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .table-container { @apply bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8; }
+        th { @apply px-4 py-3 bg-slate-50 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200; }
+        td { @apply px-4 py-3 text-sm text-slate-600 border-b border-slate-100; }
+        tr:last-child td { border-b: 0; }
+        .highlight-row { @apply bg-blue-50/30; }
+    </style>
 </head>
-<body class="bg-slate-100 p-4 min-h-screen font-sans">
+<body class="bg-slate-50 min-h-screen p-4 md:p-8 font-sans">
 
     <div class="max-w-5xl mx-auto">
-        <div class="bg-white p-6 rounded-xl shadow-sm mb-6 border border-slate-200">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 class="text-xl font-bold text-slate-800">SIS Attendance Explorer</h1>
-                    <p class="text-xs text-slate-500 uppercase tracking-wider font-semibold">District: Layyah</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input type="text" id="emisInput" placeholder="EMIS Code" 
-                           class="bg-slate-50 border border-slate-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-40"
-                           value="32230085">
-                    <button onclick="fetchAllData()" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition-all active:scale-95">
-                        FETCH DATA
-                    </button>
-                </div>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">SIS MONITOR</h1>
+                <p class="text-xs font-bold text-blue-600 uppercase">District Education Authority Layyah</p>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="emisInput" value="32230085" 
+                       class="w-36 border border-slate-300 rounded-lg px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                <button onclick="fetchAll()" class="bg-slate-900 hover:bg-black text-white text-xs font-bold px-6 py-2 rounded-lg transition-all active:scale-95">
+                    FETCH DATA
+                </button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-8">
-            <div class="space-y-6">
-                <section>
-                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Teacher: Daily Status</h2>
-                    <div id="table-teacher-today" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto">
-                        <p class="p-8 text-center text-slate-400 italic text-sm">Enter code and click fetch...</p>
-                    </div>
-                </section>
-
-                <section>
-                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Student: Daily Status</h2>
-                    <div id="table-student-today" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"></div>
-                </section>
-
-                <section>
-                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Teacher: Monthly Trend (Log)</h2>
-                    <div id="table-teacher-monthly" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"></div>
-                </section>
-
-                <section>
-                    <h2 class="text-sm font-bold text-slate-600 mb-2 uppercase tracking-widest px-2">Student: Monthly Trend (Log)</h2>
-                    <div id="table-student-monthly" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"></div>
-                </section>
-            </div>
+        <h2 class="text-sm font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Live Daily Stats</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <div id="daily-teacher" class="table-container"></div>
+            <div id="daily-student" class="table-container"></div>
         </div>
+
+        <h2 class="text-sm font-black text-slate-400 mb-3 uppercase tracking-widest px-1">Monthly Attendance Logs</h2>
+        <div id="monthly-teacher" class="table-container"></div>
+        <div id="monthly-student" class="table-container"></div>
     </div>
 
     <script>
-        // We use a public CORS proxy to allow GitHub Pages (static) to talk to the SIS API
-        const PROXY_URL = "https://corsproxy.io/?url=";
+        const PROXY = "https://corsproxy.io/?url=";
+        const BASE_URL = "https://sis.pesrp.edu.pk/attendance/";
 
-        async function fetchEndpoint(url, targetId) {
+        function calculateStats(present, absent) {
+            const p = parseInt(present) || 0;
+            const a = parseInt(absent) || 0;
+            const marked = p + a;
+            const pPerc = marked > 0 ? ((p / marked) * 100).toFixed(1) : "0.0";
+            const aPerc = marked > 0 ? ((a / marked) * 100).toFixed(1) : "0.0";
+            return { marked, pPerc, aPerc };
+        }
+
+        async function fetchAll() {
+            const emis = document.getElementById('emisInput').value;
+            const todayDate = new Date().toLocaleDateString('en-GB');
+
+            // 1. Fetch Daily Stats
+            fetchDaily(`${BASE_URL}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-teacher', 'Teacher Today', todayDate);
+            fetchDaily(`${BASE_URL}get_today_attendance_stats?s_id_emis_code=${emis}`, 'daily-student', 'Student Today', todayDate);
+
+            // 2. Fetch Monthly Logs (Line Stats)
+            fetchMonthly(`${BASE_URL}get_teachers_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'monthly-teacher', 'Teacher Monthly Log');
+            fetchMonthly(`${BASE_URL}get_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'monthly-student', 'Student Monthly Log');
+        }
+
+        async function fetchDaily(url, targetId, title, dateStr) {
             const container = document.getElementById(targetId);
-            container.innerHTML = `<div class="p-8 text-center"><span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></span> Loading...</div>`;
-
+            container.innerHTML = `<div class="p-6 text-xs text-slate-400">Loading ${title}...</div>`;
             try {
-                // Encode the SIS URL so the proxy can handle it
-                const proxiedUrl = PROXY_URL + encodeURIComponent(url);
-                const response = await fetch(proxiedUrl);
+                const res = await fetch(PROXY + encodeURIComponent(url));
+                const data = await res.json();
+                const row = Array.isArray(data) ? data[0] : data;
                 
-                if (!response.ok) throw new Error('API unreachable');
-                const data = await response.json();
-                
-                renderTable(data, targetId);
-            } catch (err) {
+                const stats = calculateStats(row.present, row.absent);
+
                 container.innerHTML = `
-                    <div class="p-6 text-red-500 text-xs font-mono bg-red-50">
-                        FAILED TO FETCH: Check EMIS code or connection.
-                    </div>`;
-            }
+                    <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase">${title}</div>
+                    <table class="w-full">
+                        <thead><tr><th>Date</th><th>Present</th><th>Absent</th><th>Marked</th><th>P %</th><th>A %</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>${dateStr}</td>
+                                <td class="font-bold text-green-600">${row.present || 0}</td>
+                                <td class="font-bold text-red-600">${row.absent || 0}</td>
+                                <td>${stats.marked}</td>
+                                <td class="bg-green-50/50 font-bold">${stats.pPerc}%</td>
+                                <td class="bg-red-50/50 font-bold">${stats.aPerc}%</td>
+                            </tr>
+                        </tbody>
+                    </table>`;
+            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">Error loading ${title}</div>`; }
         }
 
-        function renderTable(data, targetId) {
+        async function fetchMonthly(url, targetId, title) {
             const container = document.getElementById(targetId);
-            const rows = Array.isArray(data) ? data : (data ? [data] : []);
+            container.innerHTML = `<div class="p-6 text-xs text-slate-400">Loading ${title}...</div>`;
+            try {
+                const res = await fetch(PROXY + encodeURIComponent(url));
+                const data = await res.json();
+                
+                let html = `<div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-bold text-[10px] text-slate-500 uppercase">${title}</div>`;
+                html += `<table class="w-full"><thead><tr><th>Day</th><th>Present</th><th>Absent</th><th>Marked</th><th>P %</th><th>A %</th></tr></thead><tbody>`;
 
-            if (rows.length === 0) {
-                container.innerHTML = `<p class="p-6 text-slate-400 text-sm">No data available for this selection.</p>`;
-                return;
-            }
+                // Map through the 'categories' array which represents the days
+                data.categories.forEach((day, index) => {
+                    const p = data.present[index] || 0;
+                    const a = data.absent[index] || 0;
+                    const stats = calculateStats(p, a);
+                    
+                    // Only highlight days where attendance was actually marked
+                    const rowClass = stats.marked > 0 ? 'highlight-row' : '';
 
-            const keys = Object.keys(rows[0]);
-            let html = `<table class="w-full text-left text-sm">`;
-            
-            // Header
-            html += `<thead class="bg-slate-50 border-b border-slate-200"><tr>`;
-            keys.forEach(key => {
-                html += `<th class="px-4 py-3 font-bold text-slate-700 uppercase text-[10px]">${key.replace(/_/g, ' ')}</th>`;
-            });
-            html += `</tr></thead><tbody class="divide-y divide-slate-100">`;
-
-            // Body
-            rows.forEach(row => {
-                html += `<tr class="hover:bg-slate-50 transition-colors">`;
-                keys.forEach(key => {
-                    const val = row[key] ?? '-';
-                    html += `<td class="px-4 py-3 text-slate-600">${val}</td>`;
+                    html += `<tr class="${rowClass}">
+                        <td class="font-bold">Day ${day}</td>
+                        <td>${p}</td>
+                        <td>${a}</td>
+                        <td>${stats.marked}</td>
+                        <td class="font-bold text-green-700">${stats.pPerc}%</td>
+                        <td class="font-bold text-red-700">${stats.aPerc}%</td>
+                    </tr>`;
                 });
-                html += `</tr>`;
-            });
-            
-            html += `</tbody></table>`;
-            container.innerHTML = html;
+
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            } catch (e) { container.innerHTML = `<div class="p-4 text-red-500 text-xs">Error loading ${title}</div>`; }
         }
 
-        function fetchAllData() {
-            const emis = document.getElementById('emisInput').value.trim();
-            if(!emis) return;
-
-            const base = "https://sis.pesrp.edu.pk/attendance/";
-            
-            fetchEndpoint(`${base}get_teachers_today_attendance_stats?s_id_emis_code=${emis}`, 'table-teacher-today');
-            fetchEndpoint(`${base}get_today_attendance_stats?s_id_emis_code=${emis}`, 'table-student-today');
-            fetchEndpoint(`${base}get_teachers_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'table-teacher-monthly');
-            fetchEndpoint(`${base}get_attendance_line_stats?month=scma&s_id_emis_code=${emis}`, 'table-student-monthly');
-        }
+        // Run on load
+        fetchAll();
     </script>
 </body>
 </html>
