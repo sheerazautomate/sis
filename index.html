@@ -21,6 +21,19 @@
     --sans: 'IBM Plex Sans', sans-serif;
   }
 
+  body.light-theme {
+    --bg: #f6f8fa;
+    --surface: #ffffff;
+    --surface2: #f3f4f6;
+    --border: #d0d7de;
+    --accent: #0969da;
+    --accent2: #1a7f37;
+    --danger: #cf222e;
+    --warn: #9a6700;
+    --text: #1f2328;
+    --muted: #656d76;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -29,6 +42,7 @@
     font-family: var(--sans);
     min-height: 100vh;
     font-size: 14px;
+    transition: background-color 0.3s, color 0.3s;
   }
 
   /* HEADER */
@@ -42,6 +56,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
+    transition: background-color 0.3s, border-color 0.3s;
   }
   .logo-mark {
     width: 36px; height: 36px;
@@ -51,13 +66,22 @@
     font-family: var(--mono);
     font-weight: 600;
     font-size: 14px;
-    color: #0d1117;
+    color: #ffffff;
     flex-shrink: 0;
   }
+  body:not(.light-theme) .logo-mark { color: #0d1117; }
+  
   .header-title { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
   .header-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
-  .header-date {
+  
+  .header-actions {
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header-date {
     font-family: var(--mono);
     font-size: 12px;
     color: var(--accent);
@@ -66,6 +90,22 @@
     border-radius: 4px;
     border: 1px solid rgba(88,166,255,0.2);
   }
+
+  .theme-toggle {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
 
   /* MAIN */
   main { max-width: 1400px; margin: 0 auto; padding: 24px; }
@@ -77,6 +117,7 @@
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 24px;
+    transition: background-color 0.3s, border-color 0.3s;
   }
   .filter-label {
     font-size: 11px;
@@ -114,14 +155,14 @@
     background-repeat: no-repeat;
     background-position: right 10px center;
     padding-right: 28px;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, background-color 0.3s, color 0.3s;
   }
   select:focus { outline: none; border-color: var(--accent); }
   select:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .btn-fetch {
     background: var(--accent);
-    color: #0d1117;
+    color: #ffffff;
     border: none;
     padding: 9px 22px;
     border-radius: 6px;
@@ -133,6 +174,8 @@
     white-space: nowrap;
     align-self: flex-end;
   }
+  body:not(.light-theme) .btn-fetch { color: #0d1117; }
+  
   .btn-fetch:hover { opacity: 0.85; }
   .btn-fetch:active { transform: scale(0.97); }
   .btn-fetch:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
@@ -177,6 +220,7 @@
     border-radius: 10px;
     padding: 16px;
     display: none;
+    transition: background-color 0.3s, border-color 0.3s;
   }
   .card.visible { display: block; }
   .card-icon { font-size: 18px; margin-bottom: 8px; }
@@ -236,6 +280,7 @@
     cursor: pointer;
     user-select: none;
     border-bottom: 1px solid var(--border);
+    transition: color 0.15s, background-color 0.3s;
   }
   th:hover { color: var(--text); }
   th .sort-arrow { margin-left: 4px; opacity: 0.4; }
@@ -246,7 +291,7 @@
     transition: background 0.1s;
   }
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody tr:hover { background: rgba(125,133,144,0.1); }
   td {
     padding: 10px 14px;
     font-size: 13px;
@@ -303,235 +348,6 @@
     .btn-fetch { width: 100%; justify-content: center; }
   }
 
-  /* MODAL */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    width: 100%;
-    max-width: 820px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    animation: modalIn 0.18s ease;
-  }
-  @keyframes modalIn {
-    from { transform: scale(0.95); opacity: 0; }
-    to   { transform: scale(1);    opacity: 1; }
-  }
-  .modal-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .modal-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-  .modal-emis  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-  .modal-close {
-    margin-left: auto;
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    width: 30px; height: 30px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: color 0.15s, border-color 0.15s;
-  }
-  .modal-close:hover { color: var(--text); border-color: var(--text); }
-  .modal-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .modal-tab {
-    padding: 10px 18px;
-    font-family: var(--mono);
-    font-size: 12px;
-    cursor: pointer;
-    color: var(--muted);
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s;
-    background: none;
-    border-top: none; border-left: none; border-right: none;
-    border-bottom: 2px solid transparent;
-  }
-  .modal-tab:hover { color: var(--text); }
-  .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .modal-body {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-    min-height: 340px;
-  }
-  .modal-frame {
-    width: 100%; height: 100%;
-    border: none;
-    background: #fff;
-    display: none;
-    min-height: 340px;
-  }
-  .modal-frame.active { display: block; }
-  .modal-spinner {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 12px;
-  }
-  .spinner-ring {
-    width: 32px; height: 32px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .modal-footer {
-    padding: 12px 20px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
-  }
-  .modal-url {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .modal-open-btn {
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 5px 12px;
-    border-radius: 5px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: border-color 0.15s;
-    text-decoration: none;
-    display: inline-block;
-  }
-  .modal-open-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* Modal stat cards */
-  .modal-stat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  .modal-stat-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-  }
-  .modal-stat-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-  .modal-stat-value {
-    font-family: var(--mono);
-    font-size: 28px;
-    font-weight: 600;
-    line-height: 1;
-  }
-  .modal-stat-value.green  { color: var(--accent2); }
-  .modal-stat-value.red    { color: var(--danger); }
-  .modal-stat-value.blue   { color: var(--accent); }
-  .modal-stat-value.yellow { color: var(--warn); }
-  .modal-status-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .modal-status-banner.marked   { background: rgba(63,185,80,0.1);  border: 1px solid rgba(63,185,80,0.25);  color: var(--accent2); }
-  .modal-status-banner.unmarked { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.2);   color: var(--danger);  }
-  .modal-meta-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-  }
-  .modal-meta-chip {
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-  }
-  .modal-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 16px 0;
-  }
-  .modal-raw-toggle {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 0;
-    user-select: none;
-    transition: color 0.15s;
-  }
-  .modal-raw-toggle:hover { color: var(--text); }
-  .modal-raw-pre {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--accent);
-    overflow-x: auto;
-    margin-top: 8px;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
 </style>
 </head>
 <body>
@@ -542,7 +358,10 @@
     <div class="header-title">PESRP Attendance Dashboard</div>
     <div class="header-sub">Punjab School Attendance Monitor</div>
   </div>
-  <div class="header-date" id="headerDate">—</div>
+  <div class="header-actions">
+    <div class="header-date" id="headerDate">—</div>
+    <button class="theme-toggle" id="themeToggle">☀️ Light</button>
+  </div>
 </header>
 
 <main>
@@ -673,64 +492,18 @@
 
   </div>
 
-<!-- MANUAL CHECK MODAL -->
-<div class="modal-overlay" id="manualModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title" id="modalSchoolName">School Name</div>
-        <div class="modal-emis" id="modalEmisCode">EMIS: —</div>
-      </div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-tabs">
-      <button class="modal-tab active" onclick="switchModalTab('students')" id="tabStudents">🎓 Students</button>
-      <button class="modal-tab" onclick="switchModalTab('teachers')" id="tabTeachers">👨‍🏫 Teachers</button>
-    </div>
-    <div class="modal-body" id="modalBody">
-      <div class="modal-spinner" id="modalSpinner">
-        <div class="spinner-ring"></div>
-        <span id="modalSpinnerText">Fetching data...</span>
-      </div>
-      <div class="modal-content-area" id="modalContentArea" style="display:none; padding:20px; overflow-y:auto; height:100%;">
-
-        <!-- STUDENTS PANEL -->
-        <div id="modalStudentsPanel">
-          <div class="modal-stat-grid" id="modalSStats"></div>
-          <div class="modal-raw-toggle" onclick="toggleRaw('s')">
-            <span id="rawToggleLabelS">▶ Show raw JSON</span>
-          </div>
-          <pre class="modal-raw-pre" id="modalSRaw" style="display:none"></pre>
-        </div>
-
-        <!-- TEACHERS PANEL -->
-        <div id="modalTeachersPanel" style="display:none">
-          <div class="modal-stat-grid" id="modalTStats"></div>
-          <div class="modal-raw-toggle" onclick="toggleRaw('t')">
-            <span id="rawToggleLabelT">▶ Show raw JSON</span>
-          </div>
-          <pre class="modal-raw-pre" id="modalTRaw" style="display:none"></pre>
-        </div>
-
-        <!-- ERROR PANEL (fallback) -->
-        <div id="modalErrorPanel" style="display:none; text-align:center; padding:40px 20px;">
-          <div style="font-size:28px; margin-bottom:12px;">⚠️</div>
-          <div style="font-family:var(--mono); font-size:13px; color:var(--muted); margin-bottom:16px;" id="modalErrorText">All proxies failed.</div>
-          <a class="modal-open-btn" id="modalFallbackLink" href="#" target="_blank" style="font-size:13px; padding:8px 18px;">↗ Open directly in new tab</a>
-        </div>
-
-      </div>
-    </div>
-    <div class="modal-footer">
-      <span class="modal-url" id="modalUrlDisplay"></span>
-      <a class="modal-open-btn" id="modalOpenLink" href="#" target="_blank">↗ Open in tab</a>
-    </div>
-  </div>
-</div>
-
 </main>
 
 <script>
+// ── Theme Toggle Logic ────────────────────────────────────────
+const themeToggleBtn = document.getElementById('themeToggle');
+themeToggleBtn.addEventListener('click', () => {
+  document.body.classList.toggle('light-theme');
+  const isLight = document.body.classList.contains('light-theme');
+  themeToggleBtn.innerHTML = isLight ? '🌙 Dark' : '☀️ Light';
+});
+
+
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
 const PROXIES = [
   "https://corsproxy.io/?url=",
@@ -740,6 +513,7 @@ const PROXIES = [
 const STUDENT_BASE = emis => `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
 const TEACHER_BASE = emis => `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 async function fetchWithRetry(baseFn, emis) {
   for (let attempt = 0; attempt < PROXIES.length * 2; attempt++) {
     const proxy = PROXIES[attempt % PROXIES.length];
@@ -755,7 +529,7 @@ async function fetchWithRetry(baseFn, emis) {
     }
   }
   return null;
-};
+}
 
 let allRows = [];
 let sortState = { s: { col: 'status', asc: true }, t: { col: 'status', asc: true } };
@@ -802,7 +576,6 @@ document.getElementById('selDistrict').addEventListener('change', function() {
   if (!d) { selW.innerHTML = '<option value="">— Select District —</option>'; selW.disabled = true; return; }
   const wings = unique(allRows.filter(r => r['District'] === d).map(r => r['Wing']));
   fillSelect(selW, wings, '— All Wings —');
-  // also allow blank wing → all
   selW.dispatchEvent(new Event('change'));
 });
 
@@ -882,7 +655,6 @@ async function fetchAttendance() {
     pt.textContent = `Fetching ${done} / ${total} schools...`;
   };
 
-  // Fetch in parallel with concurrency limit of 10
   const CONCURRENCY = 10;
   const studentResults = new Array(total);
   const teacherResults = new Array(total);
@@ -898,7 +670,6 @@ async function fetchAttendance() {
     updateProgress();
   }
 
-  // Batched concurrency
   for (let i = 0; i < total; i += CONCURRENCY) {
     const batch = [];
     for (let j = i; j < Math.min(i + CONCURRENCY, total); j++) batch.push(fetchOne(j));
@@ -908,14 +679,12 @@ async function fetchAttendance() {
   pw.classList.remove('visible');
   document.getElementById('btnFetch').disabled = false;
 
-  // Build table data
   lastStudentData = schools.map((s, i) => ({ school: s, data: studentResults[i] }));
   lastTeacherData = schools.map((s, i) => ({ school: s, data: teacherResults[i] }));
 
   renderTables();
   renderCards();
 
-  // Date from first successful result
   const firstDate = (studentResults.find(r => r && r.todayDate) || {}).todayDate;
   if (firstDate) document.getElementById('headerDate').textContent = firstDate;
 }
@@ -956,10 +725,9 @@ function sortData(data, col, asc) {
   });
 }
 
-function statusPill(status, error, emis, schoolName) {
-  const safeName = (schoolName || '').replace(/'/g, "\\'");
+function statusPill(status, error) {
   if (error || status === -1) {
-    return `<button class="status-pill status-unmarked" style="cursor:pointer;font-family:var(--mono)" onclick="openManualModal('${emis}','${safeName}')"><span class="dot"></span>Error — Check Manually ↗</button>`;
+    return `<span class="status-pill status-unmarked"><span class="dot"></span>Error — No Data</span>`;
   }
   if (status === 1) return `<span class="status-pill status-marked"><span class="dot"></span>Marked</span>`;
   return `<span class="status-pill status-unmarked"><span class="dot"></span>Not Marked</span>`;
@@ -972,7 +740,6 @@ function renderTableBody(tbodyId, rawData, tableKey) {
   const objs = rawData.map(rowToObj);
   const sorted = sortData(objs, col, asc);
 
-  // Update sort arrows
   const table = tbody.closest('table');
   table.querySelectorAll('th').forEach(th => {
     th.classList.toggle('sorted', th.dataset.col === col);
@@ -989,7 +756,7 @@ function renderTableBody(tbodyId, rawData, tableKey) {
       <td class="num present">${r.present !== null ? r.present.toLocaleString() : '—'}</td>
       <td class="num absent">${r.absent !== null ? r.absent.toLocaleString() : '—'}</td>
       <td class="num total">${r.marked !== null ? r.marked.toLocaleString() : '—'}</td>
-      <td>${statusPill(r.status, r.error, r.emis, r.name)}</td>
+      <td>${statusPill(r.status, r.error)}</td>
     </tr>
   `).join('');
 
@@ -1066,159 +833,6 @@ function showError(msg) {
     showError('Failed to load school data from Google Sheets. Check CSV URL or network.');
   }
 })();
-
-// ── Manual Check Modal ───────────────────────────────────────
-let currentModalEmis = '';
-let currentModalTab = 'students';
-let modalCache = {}; // emis -> { students: data|null, teachers: data|null }
-
-function openManualModal(emisCode, schoolName) {
-  currentModalEmis = emisCode;
-  currentModalTab = 'students';
-
-  document.getElementById('modalSchoolName').textContent = schoolName;
-  document.getElementById('modalEmisCode').textContent = 'EMIS: ' + emisCode;
-  document.getElementById('manualModal').classList.add('open');
-
-  // Reset to students tab
-  document.getElementById('tabStudents').classList.add('active');
-  document.getElementById('tabTeachers').classList.remove('active');
-  document.getElementById('modalStudentsPanel').style.display = 'block';
-  document.getElementById('modalTeachersPanel').style.display = 'none';
-
-  // Set footer URL
-  const sUrl = `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emisCode}&ony_kpztp_districts=false`;
-  document.getElementById('modalUrlDisplay').textContent = sUrl;
-  document.getElementById('modalOpenLink').href = sUrl;
-  document.getElementById('modalFallbackLink').href = sUrl;
-
-  // If cached, render immediately
-  if (modalCache[emisCode]) {
-    renderModalData(modalCache[emisCode]);
-  } else {
-    showModalSpinner('Fetching attendance data...');
-    fetchModalData(emisCode);
-  }
-}
-
-async function fetchModalData(emis) {
-  const sBase = `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
-  const tBase = `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
-
-  const [sData, tData] = await Promise.all([
-    fetchWithRetry(STUDENT_BASE, emis),
-    fetchWithRetry(TEACHER_BASE, emis)
-  ]);
-
-  const result = { students: sData, teachers: tData };
-  modalCache[emis] = result;
-
-  // Only render if modal still showing this emis
-  if (currentModalEmis === emis) renderModalData(result);
-}
-
-function renderModalData(result) {
-  hideModalSpinner();
-
-  const sData = result.students;
-  const tData = result.teachers;
-
-  // Render students panel
-  renderModalPanel('s', sData, 'Students');
-  renderModalPanel('t', tData, 'Teachers');
-
-  // Show content
-  document.getElementById('modalErrorPanel').style.display = 'none';
-  document.getElementById('modalContentArea').style.display = 'block';
-}
-
-function renderModalPanel(key, data, label) {
-  const statsEl = document.getElementById(key === 's' ? 'modalSStats' : 'modalTStats');
-  const rawEl   = document.getElementById(key === 's' ? 'modalSRaw'   : 'modalTRaw');
-
-  if (!data) {
-    statsEl.innerHTML = `
-      <div style="grid-column:1/-1; text-align:center; padding:30px; font-family:var(--mono); font-size:13px; color:var(--danger);">
-        ⚠️ Could not load ${label} data — all proxies failed.<br>
-        <a href="${currentModalEmis}" target="_blank" style="color:var(--accent); margin-top:8px; display:inline-block;">↗ Try opening directly</a>
-      </div>`;
-    rawEl.textContent = '';
-    return;
-  }
-
-  const present  = parseNum(data.present_count);
-  const absent   = parseNum(data.absent_count);
-  const marked   = parseNum(data.marked_count);
-  const unmarked = parseNum(data.unmarked_count);
-  const isMarked = marked > 0;
-
-  // Status banner
-  const banner = `
-    <div class="modal-status-banner ${isMarked ? 'marked' : 'unmarked'}" style="grid-column:1/-1">
-      <span>${isMarked ? '✅' : '❌'}</span>
-      <span>${label} Attendance ${isMarked ? 'MARKED' : 'NOT MARKED'} — ${data.todayDate || ''}</span>
-    </div>`;
-
-  // Stat cards
-  const cards = [
-    { label: 'Present',       value: present.toLocaleString(),  cls: 'green'  },
-    { label: 'Absent',        value: absent.toLocaleString(),   cls: 'red'    },
-    { label: 'Total Marked',  value: marked.toLocaleString(),   cls: 'blue'   },
-    { label: 'Not Marked Yet',value: unmarked.toLocaleString(), cls: 'yellow' },
-  ].map(c => `
-    <div class="modal-stat-card">
-      <div class="modal-stat-label">${c.label}</div>
-      <div class="modal-stat-value ${c.cls}">${c.value}</div>
-    </div>`).join('');
-
-  statsEl.innerHTML = banner + cards;
-  rawEl.textContent = JSON.stringify(data, null, 2);
-}
-
-function switchModalTab(type) {
-  currentModalTab = type;
-  document.getElementById('tabStudents').classList.toggle('active', type === 'students');
-  document.getElementById('tabTeachers').classList.toggle('active', type === 'teachers');
-  document.getElementById('modalStudentsPanel').style.display = type === 'students' ? 'block' : 'none';
-  document.getElementById('modalTeachersPanel').style.display = type === 'teachers' ? 'block' : 'none';
-
-  // Update footer URL
-  const emis = currentModalEmis;
-  const url = type === 'students'
-    ? `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`
-    : `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
-  document.getElementById('modalUrlDisplay').textContent = url;
-  document.getElementById('modalOpenLink').href = url;
-  document.getElementById('modalFallbackLink').href = url;
-}
-
-function toggleRaw(key) {
-  const pre   = document.getElementById(key === 's' ? 'modalSRaw' : 'modalTRaw');
-  const label = document.getElementById(key === 's' ? 'rawToggleLabelS' : 'rawToggleLabelT');
-  const open  = pre.style.display === 'none';
-  pre.style.display   = open ? 'block' : 'none';
-  label.textContent   = open ? '▼ Hide raw JSON' : '▶ Show raw JSON';
-}
-
-function showModalSpinner(msg) {
-  document.getElementById('modalSpinnerText').textContent = msg || 'Fetching...';
-  document.getElementById('modalSpinner').style.display = 'flex';
-  document.getElementById('modalContentArea').style.display = 'none';
-}
-
-function hideModalSpinner() {
-  document.getElementById('modalSpinner').style.display = 'none';
-}
-
-function closeModal() {
-  document.getElementById('manualModal').classList.remove('open');
-  currentModalEmis = '';
-}
-
-document.getElementById('manualModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 </script>
 </body>
