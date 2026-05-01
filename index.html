@@ -20,334 +20,220 @@
     --mono: 'IBM Plex Mono', monospace;
     --sans: 'IBM Plex Sans', sans-serif;
   }
-
   body.light-theme {
-    --bg: #f6f8fa;
-    --surface: #ffffff;
-    --surface2: #f3f4f6;
-    --border: #d0d7de;
-    --accent: #0969da;
-    --accent2: #1a7f37;
-    --danger: #cf222e;
-    --warn: #9a6700;
-    --text: #1f2328;
-    --muted: #656d76;
+    --bg: #f6f8fa; --surface: #ffffff; --surface2: #f3f4f6;
+    --border: #d0d7de; --accent: #0969da; --accent2: #1a7f37;
+    --danger: #cf222e; --warn: #9a6700; --text: #1f2328; --muted: #656d76;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    font-size: 14px;
-    transition: background-color 0.3s, color 0.3s;
+    background: var(--bg); color: var(--text); font-family: var(--sans);
+    min-height: 100vh; font-size: 14px; transition: background-color 0.3s, color 0.3s;
   }
 
-  /* HEADER */
+  /* ── HEADER ── */
   header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 16px 24px; display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
     transition: background-color 0.3s, border-color 0.3s;
   }
   .logo-mark {
-    width: 36px; height: 36px;
-    background: var(--accent);
-    border-radius: 6px;
+    width: 36px; height: 36px; background: var(--accent); border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--mono);
-    font-weight: 600;
-    font-size: 14px;
-    color: #ffffff;
-    flex-shrink: 0;
+    font-family: var(--mono); font-weight: 600; font-size: 14px;
+    color: #ffffff; flex-shrink: 0;
   }
   body:not(.light-theme) .logo-mark { color: #0d1117; }
-  
   .header-title { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
-  .header-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
-  
-  .header-actions {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
+  .header-sub   { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .header-actions { margin-left: auto; display: flex; align-items: center; gap: 16px; }
   .header-date {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--accent);
-    background: rgba(88,166,255,0.1);
-    padding: 4px 10px;
-    border-radius: 4px;
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    background: rgba(88,166,255,0.1); padding: 4px 10px; border-radius: 4px;
     border: 1px solid rgba(88,166,255,0.2);
   }
-
   .theme-toggle {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-family: var(--mono);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 12px; border-radius: 6px; font-family: var(--mono); font-size: 12px;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
   }
   .theme-toggle:hover { border-color: var(--accent); }
 
-  /* MAIN */
+  /* ── MAIN ── */
   main { max-width: 1400px; margin: 0 auto; padding: 24px; }
 
-  /* FILTERS */
+  /* ── GAS URL BANNER ── */
+  .gas-banner {
+    background: rgba(88,166,255,0.07);
+    border: 1px solid rgba(88,166,255,0.2);
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .gas-banner label {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap;
+  }
+  .gas-banner input {
+    flex: 1; min-width: 260px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 7px 12px; border-radius: 6px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .gas-banner input:focus { outline: none; border-color: var(--accent); }
+  .gas-save-btn {
+    background: var(--accent); color: #ffffff; border: none; padding: 7px 16px;
+    border-radius: 6px; font-family: var(--mono); font-size: 12px;
+    font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  body:not(.light-theme) .gas-save-btn { color: #0d1117; }
+  .gas-save-btn:hover { opacity: 0.85; }
+  .gas-status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); flex-shrink: 0; transition: background 0.3s;
+  }
+  .gas-status-dot.ok  { background: var(--accent2); }
+  .gas-status-dot.err { background: var(--danger); }
+
+  /* ── FILTERS ── */
   .filter-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 24px;
-    transition: background-color 0.3s, border-color 0.3s;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; margin-bottom: 24px; transition: background-color 0.3s, border-color 0.3s;
   }
   .filter-label {
-    font-size: 11px;
-    font-family: var(--mono);
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 12px;
+    font-size: 11px; font-family: var(--mono); color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
   }
-  .filter-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-  }
+  .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
   .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
   .filter-group label {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: var(--mono);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+    text-transform: uppercase; letter-spacing: 0.06em;
   }
   select {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-family: var(--sans);
-    font-size: 13px;
-    cursor: pointer;
-    appearance: none;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 12px; border-radius: 6px; font-family: var(--sans); font-size: 13px;
+    cursor: pointer; appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237d8590' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 28px;
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
     transition: border-color 0.15s, background-color 0.3s, color 0.3s;
   }
   select:focus { outline: none; border-color: var(--accent); }
   select:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .btn-fetch {
-    background: var(--accent);
-    color: #ffffff;
-    border: none;
-    padding: 9px 22px;
-    border-radius: 6px;
-    font-family: var(--mono);
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-    white-space: nowrap;
-    align-self: flex-end;
+    background: var(--accent); color: #ffffff; border: none;
+    padding: 9px 22px; border-radius: 6px; font-family: var(--mono);
+    font-weight: 600; font-size: 13px; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s; white-space: nowrap; align-self: flex-end;
   }
   body:not(.light-theme) .btn-fetch { color: #0d1117; }
-  
   .btn-fetch:hover { opacity: 0.85; }
   .btn-fetch:active { transform: scale(0.97); }
   .btn-fetch:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-  /* PROGRESS */
-  .progress-wrap {
-    margin-top: 14px;
-    display: none;
-  }
+  /* ── PROGRESS ── */
+  .progress-wrap { margin-top: 14px; display: none; }
   .progress-wrap.visible { display: block; }
-  .progress-text {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
+  .progress-text { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-bottom: 6px; }
   .progress-bar-bg {
-    background: var(--surface2);
-    border-radius: 4px;
-    height: 4px;
-    overflow: hidden;
-    border: 1px solid var(--border);
+    background: var(--surface2); border-radius: 4px; height: 4px;
+    overflow: hidden; border: 1px solid var(--border);
   }
   .progress-bar-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 4px;
-    transition: width 0.2s ease;
-    width: 0%;
+    height: 100%; background: var(--accent); border-radius: 4px;
+    transition: width 0.3s ease; width: 0%;
   }
 
-  /* SUMMARY CARDS */
-  .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 12px;
-    margin-bottom: 24px;
+  /* ── STREAM STATUS PILL ── */
+  .stream-status {
+    margin-top: 10px; display: none;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); display: none; align-items: center; gap: 8px;
   }
+  .stream-status.visible { display: flex; }
+  .pulse {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* ── CARDS ── */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 12px; margin-bottom: 24px; }
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    display: none;
-    transition: background-color 0.3s, border-color 0.3s;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; display: none; transition: background-color 0.3s, border-color 0.3s;
   }
   .card.visible { display: block; }
-  .card-icon { font-size: 18px; margin-bottom: 8px; }
+  .card-icon  { font-size: 18px; margin-bottom: 8px; }
   .card-label { font-size: 11px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
   .card-value { font-size: 26px; font-family: var(--mono); font-weight: 600; line-height: 1; }
-  .card-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+  .card-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
   .card-value.green { color: var(--accent2); }
-  .card-value.blue { color: var(--accent); }
-  .card-value.red { color: var(--danger); }
+  .card-value.blue  { color: var(--accent); }
+  .card-value.red   { color: var(--danger); }
 
-  /* TABLES */
+  /* ── TABLES ── */
   .tables-wrap { display: none; }
   .tables-wrap.visible { display: block; }
-
   .table-section { margin-bottom: 28px; }
-  .table-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
+  .table-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .table-title  { font-size: 13px; font-weight: 600; font-family: var(--mono); letter-spacing: 0.04em; }
+  .table-badge  {
+    font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 10px;
+    background: rgba(88,166,255,0.12); color: var(--accent); border: 1px solid rgba(88,166,255,0.2);
   }
-  .table-title {
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--mono);
-    letter-spacing: 0.04em;
-  }
-  .table-badge {
-    font-size: 11px;
-    font-family: var(--mono);
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: rgba(88,166,255,0.12);
-    color: var(--accent);
-    border: 1px solid rgba(88,166,255,0.2);
-  }
-  .table-sort-hint {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--muted);
-    font-family: var(--mono);
-  }
+  .table-sort-hint { margin-left: auto; font-size: 11px; color: var(--muted); font-family: var(--mono); }
 
   .table-scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; }
   thead { background: var(--surface2); }
   th {
-    padding: 10px 14px;
-    text-align: left;
-    font-size: 11px;
-    font-family: var(--mono);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-    white-space: nowrap;
-    cursor: pointer;
-    user-select: none;
-    border-bottom: 1px solid var(--border);
-    transition: color 0.15s, background-color 0.3s;
+    padding: 10px 14px; text-align: left; font-size: 11px; font-family: var(--mono);
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+    white-space: nowrap; cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--border); transition: color 0.15s, background-color 0.3s;
   }
   th:hover { color: var(--text); }
   th .sort-arrow { margin-left: 4px; opacity: 0.4; }
   th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
-
-  tbody tr {
-    border-bottom: 1px solid var(--border);
-    transition: background 0.1s;
-  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
   tbody tr:last-child { border-bottom: none; }
   tbody tr:hover { background: rgba(125,133,144,0.1); }
-  td {
-    padding: 10px 14px;
-    font-size: 13px;
-    white-space: nowrap;
-  }
+  td { padding: 10px 14px; font-size: 13px; white-space: nowrap; }
   td.school-name { white-space: normal; max-width: 260px; font-weight: 500; }
   td.num { font-family: var(--mono); text-align: right; }
   td.num.present { color: var(--accent2); }
-  td.num.absent { color: var(--danger); }
-  td.num.total { color: var(--accent); }
+  td.num.absent  { color: var(--danger); }
+  td.num.total   { color: var(--accent); }
 
   .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-family: var(--mono);
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
+    border-radius: 20px; font-size: 11px; font-family: var(--mono);
+    font-weight: 600; letter-spacing: 0.04em;
   }
-  .status-marked {
-    background: rgba(63,185,80,0.12);
-    color: var(--accent2);
-    border: 1px solid rgba(63,185,80,0.25);
-  }
-  .status-unmarked {
-    background: rgba(248,81,73,0.1);
-    color: var(--danger);
-    border: 1px solid rgba(248,81,73,0.2);
-  }
+  .status-marked   { background: rgba(63,185,80,0.12); color: var(--accent2); border: 1px solid rgba(63,185,80,0.25); }
+  .status-unmarked { background: rgba(248,81,73,0.10); color: var(--danger);  border: 1px solid rgba(248,81,73,0.20); }
+  .status-error    { background: rgba(227,179,65,0.10); color: var(--warn);   border: 1px solid rgba(227,179,65,0.20); }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-  /* EMPTY / ERROR */
-  .state-msg {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 13px;
-    display: none;
-  }
+  /* ── STATES ── */
+  .state-msg { text-align: center; padding: 60px 20px; color: var(--muted); font-family: var(--mono); font-size: 13px; display: none; }
   .state-msg.visible { display: block; }
   .state-msg .icon { font-size: 36px; margin-bottom: 12px; }
-
-  /* LOADING overlay spinner for cells */
-  .loading-row td { color: var(--muted); font-style: italic; font-family: var(--mono); }
 
   @media (max-width: 640px) {
     main { padding: 12px; }
     .filter-row { flex-direction: column; }
     .filter-group { min-width: 100%; }
     .btn-fetch { width: 100%; justify-content: center; }
+    .gas-banner { flex-direction: column; }
+    .gas-banner input { min-width: 100%; }
   }
-
 </style>
 </head>
 <body>
@@ -365,6 +251,14 @@
 </header>
 
 <main>
+
+  <!-- GAS URL CONFIG -->
+  <div class="gas-banner">
+    <div class="gas-status-dot" id="gasDot"></div>
+    <label>GAS Web App URL</label>
+    <input type="url" id="gasUrlInput" placeholder="https://script.google.com/macros/s/…/exec" />
+    <button class="gas-save-btn" id="gasSaveBtn">Save</button>
+  </div>
 
   <!-- FILTERS -->
   <div class="filter-panel">
@@ -388,9 +282,14 @@
       </div>
       <button class="btn-fetch" id="btnFetch" disabled>Fetch Attendance</button>
     </div>
+
     <div class="progress-wrap" id="progressWrap">
-      <div class="progress-text" id="progressText">Fetching...</div>
+      <div class="progress-text" id="progressText">Initialising…</div>
       <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    </div>
+    <div class="stream-status" id="streamStatus">
+      <div class="pulse"></div>
+      <span id="streamMsg">Waiting for data…</span>
     </div>
   </div>
 
@@ -427,13 +326,11 @@
     </div>
   </div>
 
-  <!-- EMPTY STATE -->
+  <!-- STATES -->
   <div class="state-msg visible" id="emptyState">
     <div class="icon">📊</div>
     <div>Select a District, Wing, Tehsil and Markaz<br>then click <strong>Fetch Attendance</strong></div>
   </div>
-
-  <!-- ERROR STATE -->
   <div class="state-msg" id="errorState">
     <div class="icon">⚠️</div>
     <div id="errorMsg">Something went wrong.</div>
@@ -441,7 +338,6 @@
 
   <!-- TABLES -->
   <div class="tables-wrap" id="tablesWrap">
-
     <div class="table-section">
       <div class="table-header">
         <span class="table-title">🎓 STUDENTS ATTENDANCE</span>
@@ -450,17 +346,15 @@
       </div>
       <div class="table-scroll">
         <table id="studentsTable">
-          <thead>
-            <tr>
-              <th data-col="name" data-table="s">School Name <span class="sort-arrow">↕</span></th>
-              <th data-col="level" data-table="s">Level <span class="sort-arrow">↕</span></th>
-              <th data-col="gender" data-table="s">Gender <span class="sort-arrow">↕</span></th>
-              <th data-col="present" data-table="s" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
-              <th data-col="absent" data-table="s" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
-              <th data-col="marked" data-table="s" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
-              <th data-col="status" data-table="s">Status <span class="sort-arrow">↕</span></th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th data-col="name"    data-table="s">School Name <span class="sort-arrow">↕</span></th>
+            <th data-col="level"   data-table="s">Level <span class="sort-arrow">↕</span></th>
+            <th data-col="gender"  data-table="s">Gender <span class="sort-arrow">↕</span></th>
+            <th data-col="present" data-table="s" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
+            <th data-col="absent"  data-table="s" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
+            <th data-col="marked"  data-table="s" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
+            <th data-col="status"  data-table="s">Status <span class="sort-arrow">↕</span></th>
+          </tr></thead>
           <tbody id="studentsTbody"></tbody>
         </table>
       </div>
@@ -474,75 +368,72 @@
       </div>
       <div class="table-scroll">
         <table id="teachersTable">
-          <thead>
-            <tr>
-              <th data-col="name" data-table="t">School Name <span class="sort-arrow">↕</span></th>
-              <th data-col="level" data-table="t">Level <span class="sort-arrow">↕</span></th>
-              <th data-col="gender" data-table="t">Gender <span class="sort-arrow">↕</span></th>
-              <th data-col="present" data-table="t" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
-              <th data-col="absent" data-table="t" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
-              <th data-col="marked" data-table="t" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
-              <th data-col="status" data-table="t">Status <span class="sort-arrow">↕</span></th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th data-col="name"    data-table="t">School Name <span class="sort-arrow">↕</span></th>
+            <th data-col="level"   data-table="t">Level <span class="sort-arrow">↕</span></th>
+            <th data-col="gender"  data-table="t">Gender <span class="sort-arrow">↕</span></th>
+            <th data-col="present" data-table="t" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
+            <th data-col="absent"  data-table="t" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
+            <th data-col="marked"  data-table="t" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
+            <th data-col="status"  data-table="t">Status <span class="sort-arrow">↕</span></th>
+          </tr></thead>
           <tbody id="teachersTbody"></tbody>
         </table>
       </div>
     </div>
-
   </div>
 
 </main>
 
 <script>
-// ── Theme Toggle Logic ────────────────────────────────────────
-const themeToggleBtn = document.getElementById('themeToggle');
-themeToggleBtn.addEventListener('click', () => {
-  document.body.classList.toggle('light-theme');
-  const isLight = document.body.classList.contains('light-theme');
-  themeToggleBtn.innerHTML = isLight ? '🌙 Dark' : '☀️ Light';
+// ════════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════════
+const CSV_URL    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
+const POLL_MS    = 2000;   // poll every 2 seconds
+const POLL_MAX   = 180;    // max polls (~6 min) before giving up
+const LS_GAS_KEY = "pesrp_gas_url";
+
+let gasUrl = localStorage.getItem(LS_GAS_KEY) || "";
+let pollTimer  = null;
+let pollCount  = 0;
+let isFetching = false;
+
+// ── GAS URL Config ──────────────────────────────────────────
+const gasInput   = document.getElementById('gasUrlInput');
+const gasDot     = document.getElementById('gasDot');
+const gasSaveBtn = document.getElementById('gasSaveBtn');
+
+gasInput.value = gasUrl;
+updateGasDot();
+
+gasSaveBtn.addEventListener('click', () => {
+  gasUrl = gasInput.value.trim();
+  localStorage.setItem(LS_GAS_KEY, gasUrl);
+  updateGasDot();
 });
+gasInput.addEventListener('keydown', e => { if (e.key === 'Enter') gasSaveBtn.click(); });
 
-
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
-const PROXIES = [
-  "https://corsproxy.io/?url=",
-  "https://api.allorigins.win/raw?url=",
-  "https://thingproxy.freeboard.io/fetch/"
-];
-const STUDENT_BASE = emis => `https://sis.pesrp.edu.pk/attendance/get_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
-const TEACHER_BASE = emis => `https://sis.pesrp.edu.pk/attendance/get_teachers_today_attendance_stats?district=&tehsil=&markaz=&school=&s_id_emis_code=${emis}&ony_kpztp_districts=false`;
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function fetchWithRetry(baseFn, emis) {
-  for (let attempt = 0; attempt < PROXIES.length * 2; attempt++) {
-    const proxy = PROXIES[attempt % PROXIES.length];
-    const url = proxy + encodeURIComponent(baseFn(emis));
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const data = await resp.json();
-      if (data && ('present_count' in data || 'marked_count' in data)) return data;
-      throw new Error('Bad shape');
-    } catch(e) {
-      if (attempt < PROXIES.length * 2 - 1) await sleep(200 * (attempt + 1));
-    }
-  }
-  return null;
+function updateGasDot() {
+  gasDot.className = 'gas-status-dot' + (gasUrl ? ' ok' : ' err');
 }
 
-let allRows = [];
-let sortState = { s: { col: 'status', asc: true }, t: { col: 'status', asc: true } };
-let lastStudentData = [];
-let lastTeacherData = [];
+// ── Theme Toggle ────────────────────────────────────────────
+document.getElementById('themeToggle').addEventListener('click', function() {
+  document.body.classList.toggle('light-theme');
+  this.innerHTML = document.body.classList.contains('light-theme') ? '🌙 Dark' : '☀️ Light';
+});
 
-// ── CSV Parsing ──────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+//  CSV PARSING & FILTER POPULATION (unchanged)
+// ════════════════════════════════════════════════════════════
+let allRows = [];
+
 function parseCSV(text) {
-  const lines = text.trim().split('\n');
+  const lines   = text.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
   return lines.slice(1).map(line => {
-    const vals = [];
-    let cur = '', inQ = false;
+    const vals = []; let cur = '', inQ = false;
     for (let i = 0; i < line.length; i++) {
       const c = line[i];
       if (c === '"') { inQ = !inQ; }
@@ -558,7 +449,6 @@ function parseCSV(text) {
 
 function unique(arr) { return [...new Set(arr)].filter(Boolean).sort(); }
 
-// ── Populate Filters ─────────────────────────────────────────
 function fillSelect(el, options, placeholder) {
   el.innerHTML = `<option value="">${placeholder}</option>` +
     options.map(o => `<option value="${o}">${o}</option>`).join('');
@@ -588,8 +478,7 @@ document.getElementById('selWing').addEventListener('change', function() {
   document.getElementById('btnFetch').disabled = true;
   if (!d) return;
   const filtered = allRows.filter(r => r['District'] === d && (!w || r['Wing'] === w));
-  const tehsils = unique(filtered.map(r => r['Tehsil']));
-  fillSelect(selT, tehsils, '— Select Tehsil —');
+  fillSelect(selT, unique(filtered.map(r => r['Tehsil'])), '— Select Tehsil —');
 });
 
 document.getElementById('selTehsil').addEventListener('change', function() {
@@ -599,126 +488,173 @@ document.getElementById('selTehsil').addEventListener('change', function() {
   const selM = document.getElementById('selMarkaz');
   document.getElementById('btnFetch').disabled = true;
   if (!t) { selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true; return; }
-  const filtered = allRows.filter(r =>
-    r['District'] === d && (!w || r['Wing'] === w) && r['Tehsil'] === t
-  );
-  const marks = unique(filtered.map(r => r['Markaz']));
-  fillSelect(selM, marks, '— Select Markaz —');
+  const filtered = allRows.filter(r => r['District'] === d && (!w || r['Wing'] === w) && r['Tehsil'] === t);
+  fillSelect(selM, unique(filtered.map(r => r['Markaz'])), '— Select Markaz —');
 });
 
 document.getElementById('selMarkaz').addEventListener('change', function() {
   document.getElementById('btnFetch').disabled = !this.value;
 });
 
-// ── Fetch Attendance ─────────────────────────────────────────
-document.getElementById('btnFetch').addEventListener('click', fetchAttendance);
+// ════════════════════════════════════════════════════════════
+//  FETCH + POLL LOGIC
+// ════════════════════════════════════════════════════════════
+document.getElementById('btnFetch').addEventListener('click', startFetch);
 
-async function fetchAttendance() {
-  const d = document.getElementById('selDistrict').value;
-  const w = document.getElementById('selWing').value;
-  const t = document.getElementById('selTehsil').value;
-  const m = document.getElementById('selMarkaz').value;
-  if (!d || !t || !m) return;
+async function startFetch() {
+  if (!gasUrl) {
+    showError('Please enter and save your GAS Web App URL first.');
+    return;
+  }
+  const markaz = document.getElementById('selMarkaz').value;
+  if (!markaz) return;
 
-  const schools = allRows.filter(r =>
-    r['District'] === d &&
-    (!w || r['Wing'] === w) &&
-    r['Tehsil'] === t &&
-    r['Markaz'] === m
-  );
+  stopPolling();
+  isFetching = true;
+  resetUI();
+  setFetchingUI(true);
+  showProgress(0, 0, 'Sending fetch request to server…');
 
-  if (!schools.length) {
-    showError('No schools found for this selection.');
+  // ── Step 1: Trigger GAS to fetch from SIS ──
+  try {
+    const triggerUrl = `${gasUrl}?action=fetch&markaz=${encodeURIComponent(markaz)}`;
+    // Fire-and-forget with a short timeout — GAS will run in background
+    // We don't await completion; we'll poll for status
+    fetch(triggerUrl).catch(() => {}); // deliberate non-await
+  } catch (e) { /* ignore */ }
+
+  // Small delay before first poll to let GAS start writing
+  await sleep(1500);
+
+  // ── Step 2: Begin polling for status ──
+  pollCount = 0;
+  const markazForPoll = markaz;
+  pollTimer = setInterval(() => pollStatus(markazForPoll), POLL_MS);
+}
+
+async function pollStatus(markaz) {
+  pollCount++;
+  if (pollCount > POLL_MAX) {
+    stopPolling();
+    setFetchingUI(false);
+    showError('Timed out waiting for data. The fetch may still be running — try again in a moment.');
     return;
   }
 
-  // Reset UI
-  document.getElementById('emptyState').classList.remove('visible');
-  document.getElementById('errorState').classList.remove('visible');
-  document.getElementById('tablesWrap').classList.remove('visible');
-  document.getElementById('btnFetch').disabled = true;
-  document.querySelectorAll('.card').forEach(c => c.classList.remove('visible'));
+  try {
+    const url  = `${gasUrl}?action=status&markaz=${encodeURIComponent(markaz)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
 
-  const pw = document.getElementById('progressWrap');
-  const pt = document.getElementById('progressText');
-  const pf = document.getElementById('progressFill');
-  pw.classList.add('visible');
-  pf.style.width = '0%';
+    if (data.error) {
+      stopPolling();
+      setFetchingUI(false);
+      showError(data.error);
+      return;
+    }
 
-  let done = 0;
-  const total = schools.length;
+    const state   = data.state   || 'empty';
+    const rows    = data.rows    || [];
+    const fetched = data.fetched || 0;
+    const total   = data.total   || 0;
 
-  const updateProgress = () => {
-    done++;
-    const pct = Math.round((done / total) * 100);
-    pf.style.width = pct + '%';
-    pt.textContent = `Fetching ${done} / ${total} schools...`;
-  };
+    // Show progress bar based on server-reported progress
+    if (state === 'fetching') {
+      const pct = total > 0 ? Math.round((fetched / total) * 100) : 0;
+      showProgress(pct, fetched, `Server fetching: ${fetched} / ${total} schools…`);
+      setStreamMsg(`Streaming partial data (${rows.length} rows received so far)…`);
+    }
 
-  const CONCURRENCY = 10;
-  const studentResults = new Array(total);
-  const teacherResults = new Array(total);
+    // Render whatever rows we have so far (partial render)
+    if (rows.length > 0) {
+      renderFromGAS(rows);
+      if (data.todayDate) document.getElementById('headerDate').textContent = data.todayDate;
+    }
 
-  async function fetchOne(idx) {
-    const emis = schools[idx]['EMIS'];
-    const [sData, tData] = await Promise.all([
-      fetchWithRetry(STUDENT_BASE, emis),
-      fetchWithRetry(TEACHER_BASE, emis)
-    ]);
-    studentResults[idx] = sData;
-    teacherResults[idx] = tData;
-    updateProgress();
+    // If locked, just wait — server says another request is writing
+    if (state === 'locked') {
+      setStreamMsg('Another user is fetching this Markaz. Waiting for their data…');
+      return;
+    }
+
+    if (state === 'done') {
+      stopPolling();
+      setFetchingUI(false);
+      hideProgress();
+      hideStreamStatus();
+      if (rows.length === 0) {
+        showError('Fetch completed but no data was returned. Check your GAS logs.');
+      }
+    }
+
+    if (state === 'error') {
+      stopPolling();
+      setFetchingUI(false);
+      showError(data.error || 'Unknown server error.');
+    }
+
+  } catch(e) {
+    // Network hiccup — don't stop polling, just note it
+    setStreamMsg(`Poll attempt ${pollCount}… (last error: ${e.message})`);
   }
+}
 
-  for (let i = 0; i < total; i += CONCURRENCY) {
-    const batch = [];
-    for (let j = i; j < Math.min(i + CONCURRENCY, total); j++) batch.push(fetchOne(j));
-    await Promise.all(batch);
-  }
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  isFetching = false;
+}
 
-  pw.classList.remove('visible');
-  document.getElementById('btnFetch').disabled = false;
+// ════════════════════════════════════════════════════════════
+//  RENDER FROM GAS JSON
+//  GAS returns rows with: name, emis, level, gender,
+//  sPresent, sAbsent, sMarked, tPresent, tAbsent, tMarked,
+//  timestamp, status
+// ════════════════════════════════════════════════════════════
+let sortState = { s: { col: 'status', asc: true }, t: { col: 'status', asc: true } };
+let lastRows  = [];
 
-  lastStudentData = schools.map((s, i) => ({ school: s, data: studentResults[i] }));
-  lastTeacherData = schools.map((s, i) => ({ school: s, data: teacherResults[i] }));
-
+function renderFromGAS(rows) {
+  lastRows = rows;
   renderTables();
   renderCards();
-
-  const firstDate = (studentResults.find(r => r && r.todayDate) || {}).todayDate;
-  if (firstDate) document.getElementById('headerDate').textContent = firstDate;
+  document.getElementById('tablesWrap').classList.add('visible');
+  document.getElementById('emptyState').classList.remove('visible');
+  document.querySelectorAll('.card').forEach(c => c.classList.add('visible'));
 }
 
-// ── Render Tables ─────────────────────────────────────────────
-function parseNum(v) {
-  if (v === null || v === undefined) return 0;
-  return parseInt(String(v).replace(/,/g, '')) || 0;
-}
-
-function rowToObj(item) {
-  const s = item.school;
-  const d = item.data;
+function gasRowToObj(r) {
   return {
-    name: s['School Name'] || '—',
-    emis: s['EMIS'] || '',
-    level: s['Level'] || '—',
-    gender: s['Gender'] || '—',
-    wing: s['Wing'] || '—',
-    present: d ? parseNum(d.present_count) : null,
-    absent: d ? parseNum(d.absent_count) : null,
-    marked: d ? parseNum(d.marked_count) : null,
-    status: d ? (parseNum(d.marked_count) > 0 ? 1 : 0) : -1,
-    error: !d
+    name:    r.name    || '—',
+    emis:    r.emis    || '',
+    level:   r.level   || '—',
+    gender:  r.gender  || '—',
+    // Students
+    present: r.sPresent !== null && r.sPresent !== undefined ? r.sPresent : null,
+    absent:  r.sAbsent  !== null && r.sAbsent  !== undefined ? r.sAbsent  : null,
+    marked:  r.sMarked  !== null && r.sMarked  !== undefined ? r.sMarked  : null,
+    // Teachers (kept separate for teacher table)
+    tPresent: r.tPresent !== null && r.tPresent !== undefined ? r.tPresent : null,
+    tAbsent:  r.tAbsent  !== null && r.tAbsent  !== undefined ? r.tAbsent  : null,
+    tMarked:  r.tMarked  !== null && r.tMarked  !== undefined ? r.tMarked  : null,
+    status:  r.status === 'ok' ? (r.sMarked > 0 ? 1 : 0) : -1,
+    tStatus: r.status === 'ok' ? (r.tMarked > 0 ? 1 : 0) : -1,
+    error:   r.status !== 'ok',
   };
 }
 
 function sortData(data, col, asc) {
+  const colMap = {
+    // For teacher table, map "present"→tPresent etc.
+    tpresent: 'tPresent', tabsent: 'tAbsent', tmarked: 'tMarked'
+  };
+  const realCol = colMap[col] || col;
   return [...data].sort((a, b) => {
-    let va = a[col], vb = b[col];
+    let va = a[realCol], vb = b[realCol];
     if (typeof va === 'string') va = va.toLowerCase();
     if (typeof vb === 'string') vb = vb.toLowerCase();
-    if (va === null) va = -Infinity;
-    if (vb === null) vb = -Infinity;
+    if (va === null || va === undefined) va = -Infinity;
+    if (vb === null || vb === undefined) vb = -Infinity;
     if (va < vb) return asc ? -1 : 1;
     if (va > vb) return asc ? 1 : -1;
     return 0;
@@ -726,20 +662,20 @@ function sortData(data, col, asc) {
 }
 
 function statusPill(status, error) {
-  if (error || status === -1) {
-    return `<span class="status-pill status-unmarked"><span class="dot"></span>Error — No Data</span>`;
-  }
-  if (status === 1) return `<span class="status-pill status-marked"><span class="dot"></span>Marked</span>`;
+  if (error || status === -1)
+    return `<span class="status-pill status-error"><span class="dot"></span>Error</span>`;
+  if (status === 1)
+    return `<span class="status-pill status-marked"><span class="dot"></span>Marked</span>`;
   return `<span class="status-pill status-unmarked"><span class="dot"></span>Not Marked</span>`;
 }
 
-function renderTableBody(tbodyId, rawData, tableKey) {
+function renderTableBody(tbodyId, objs, sortKey, tableKey) {
   const tbody = document.getElementById(tbodyId);
-  const col = sortState[tableKey].col;
-  const asc = sortState[tableKey].asc;
-  const objs = rawData.map(rowToObj);
+  const col   = sortState[tableKey].col;
+  const asc   = sortState[tableKey].asc;
   const sorted = sortData(objs, col, asc);
 
+  // Update sort arrows
   const table = tbody.closest('table');
   table.querySelectorAll('th').forEach(th => {
     th.classList.toggle('sorted', th.dataset.col === col);
@@ -748,26 +684,32 @@ function renderTableBody(tbodyId, rawData, tableKey) {
     else arrow.textContent = ' ↕';
   });
 
-  tbody.innerHTML = sorted.map(r => `
-    <tr>
+  const isTeacher = tableKey === 't';
+
+  tbody.innerHTML = sorted.map(r => {
+    const pres   = isTeacher ? r.tPresent : r.present;
+    const abs    = isTeacher ? r.tAbsent  : r.absent;
+    const mar    = isTeacher ? r.tMarked  : r.marked;
+    const status = isTeacher ? r.tStatus  : r.status;
+    return `<tr>
       <td class="school-name">${r.name}</td>
       <td>${r.level}</td>
       <td>${r.gender}</td>
-      <td class="num present">${r.present !== null ? r.present.toLocaleString() : '—'}</td>
-      <td class="num absent">${r.absent !== null ? r.absent.toLocaleString() : '—'}</td>
-      <td class="num total">${r.marked !== null ? r.marked.toLocaleString() : '—'}</td>
-      <td>${statusPill(r.status, r.error)}</td>
-    </tr>
-  `).join('');
+      <td class="num present">${pres !== null && pres !== undefined ? Number(pres).toLocaleString() : '—'}</td>
+      <td class="num absent">${abs  !== null && abs  !== undefined ? Number(abs).toLocaleString()  : '—'}</td>
+      <td class="num total">${mar   !== null && mar  !== undefined ? Number(mar).toLocaleString()  : '—'}</td>
+      <td>${statusPill(status, r.error)}</td>
+    </tr>`;
+  }).join('');
 
   const badge = tbodyId === 'studentsTbody' ? 'sBadge' : 'tBadge';
   document.getElementById(badge).textContent = `${sorted.length} school${sorted.length !== 1 ? 's' : ''}`;
 }
 
 function renderTables() {
-  renderTableBody('studentsTbody', lastStudentData, 's');
-  renderTableBody('teachersTbody', lastTeacherData, 't');
-  document.getElementById('tablesWrap').classList.add('visible');
+  const objs = lastRows.map(gasRowToObj);
+  renderTableBody('studentsTbody', objs, 'status', 's');
+  renderTableBody('teachersTbody', objs, 'tStatus', 't');
 }
 
 // Sortable headers
@@ -781,59 +723,100 @@ document.querySelectorAll('th[data-col]').forEach(th => {
   });
 });
 
-// ── Summary Cards ─────────────────────────────────────────────
+// ── Summary Cards ────────────────────────────────────────────
 function renderCards() {
-  const sums = { sPresent: 0, sAbsent: 0, sMarked: 0, sUnmarked: 0, tPresent: 0, tAbsent: 0, tMarked: 0, tUnmarked: 0 };
-  lastStudentData.forEach(({ data: d }) => {
-    if (!d) return;
-    sums.sPresent += parseNum(d.present_count);
-    sums.sAbsent += parseNum(d.absent_count);
-    if (parseNum(d.marked_count) > 0) sums.sMarked++; else sums.sUnmarked++;
+  let sPresent=0, sAbsent=0, sMarked=0, sUnmarked=0;
+  let tPresent=0, tAbsent=0, tMarked=0, tUnmarked=0;
+
+  lastRows.forEach(r => {
+    if (r.status !== 'error' && r.status !== undefined) {
+      sPresent += r.sPresent || 0;
+      sAbsent  += r.sAbsent  || 0;
+      if ((r.sMarked || 0) > 0) sMarked++; else sUnmarked++;
+      tPresent += r.tPresent || 0;
+      tAbsent  += r.tAbsent  || 0;
+      if ((r.tMarked || 0) > 0) tMarked++; else tUnmarked++;
+    }
   });
-  lastTeacherData.forEach(({ data: d }) => {
-    if (!d) return;
-    sums.tPresent += parseNum(d.present_count);
-    sums.tAbsent += parseNum(d.absent_count);
-    if (parseNum(d.marked_count) > 0) sums.tMarked++; else sums.tUnmarked++;
-  });
 
-  document.getElementById('cSchools').textContent = lastStudentData.length;
-  document.getElementById('cSPresent').textContent = sums.sPresent.toLocaleString();
-  document.getElementById('cSAbsent').textContent = `Absent: ${sums.sAbsent.toLocaleString()}`;
-  const sMarkedPct = lastStudentData.length ? Math.round(sums.sMarked / lastStudentData.length * 100) : 0;
-  document.getElementById('cSMarked').textContent = `${sums.sMarked} / ${lastStudentData.length}`;
-  document.getElementById('cSMarked').className = `card-value ${sMarkedPct === 100 ? 'green' : sMarkedPct > 50 ? 'blue' : 'red'}`;
-  document.getElementById('cSUnmarked').textContent = `Not marked: ${sums.sUnmarked}`;
+  const n = lastRows.length;
+  document.getElementById('cSchools').textContent  = n;
+  document.getElementById('cSPresent').textContent = sPresent.toLocaleString();
+  document.getElementById('cSAbsent').textContent  = `Absent: ${sAbsent.toLocaleString()}`;
+  const sPct = n ? Math.round(sMarked / n * 100) : 0;
+  document.getElementById('cSMarked').textContent  = `${sMarked} / ${n}`;
+  document.getElementById('cSMarked').className    = `card-value ${sPct===100?'green':sPct>50?'blue':'red'}`;
+  document.getElementById('cSUnmarked').textContent= `Not marked: ${sUnmarked}`;
 
-  document.getElementById('cTPresent').textContent = sums.tPresent.toLocaleString();
-  document.getElementById('cTAbsent').textContent = `Absent: ${sums.tAbsent.toLocaleString()}`;
-  const tMarkedPct = lastTeacherData.length ? Math.round(sums.tMarked / lastTeacherData.length * 100) : 0;
-  document.getElementById('cTMarked').textContent = `${sums.tMarked} / ${lastTeacherData.length}`;
-  document.getElementById('cTMarked').className = `card-value ${tMarkedPct === 100 ? 'green' : tMarkedPct > 50 ? 'blue' : 'red'}`;
-  document.getElementById('cTUnmarked').textContent = `Not marked: ${sums.tUnmarked}`;
+  document.getElementById('cTPresent').textContent = tPresent.toLocaleString();
+  document.getElementById('cTAbsent').textContent  = `Absent: ${tAbsent.toLocaleString()}`;
+  const tPct = n ? Math.round(tMarked / n * 100) : 0;
+  document.getElementById('cTMarked').textContent  = `${tMarked} / ${n}`;
+  document.getElementById('cTMarked').className    = `card-value ${tPct===100?'green':tPct>50?'blue':'red'}`;
+  document.getElementById('cTUnmarked').textContent= `Not marked: ${tUnmarked}`;
+}
 
-  document.querySelectorAll('.card').forEach(c => c.classList.add('visible'));
+// ════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════════════════════════
+function resetUI() {
+  document.getElementById('emptyState').classList.remove('visible');
+  document.getElementById('errorState').classList.remove('visible');
+  document.getElementById('tablesWrap').classList.remove('visible');
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('visible'));
+  lastRows = [];
+}
+
+function setFetchingUI(on) {
+  document.getElementById('btnFetch').disabled = on;
+  document.getElementById('selMarkaz').disabled = on;
+}
+
+function showProgress(pct, fetched, msg) {
+  const pw = document.getElementById('progressWrap');
+  pw.classList.add('visible');
+  document.getElementById('progressText').textContent = msg;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('streamStatus').classList.add('visible');
+}
+
+function hideProgress() {
+  document.getElementById('progressWrap').classList.remove('visible');
+}
+
+function hideStreamStatus() {
+  document.getElementById('streamStatus').classList.remove('visible');
+}
+
+function setStreamMsg(msg) {
+  document.getElementById('streamMsg').textContent = msg;
+  document.getElementById('streamStatus').classList.add('visible');
 }
 
 function showError(msg) {
   document.getElementById('errorMsg').textContent = msg;
   document.getElementById('errorState').classList.add('visible');
   document.getElementById('emptyState').classList.remove('visible');
+  hideProgress();
+  hideStreamStatus();
 }
 
-// ── Init: Load CSV ────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ════════════════════════════════════════════════════════════
+//  INIT: Load CSV for school list
+// ════════════════════════════════════════════════════════════
 (async function init() {
   try {
     const resp = await fetch(CSV_URL);
     const text = await resp.text();
-    allRows = parseCSV(text);
+    allRows    = parseCSV(text);
     const districts = unique(allRows.map(r => r['District']));
     fillSelect(document.getElementById('selDistrict'), districts, '— Select District —');
   } catch (e) {
-    showError('Failed to load school data from Google Sheets. Check CSV URL or network.');
+    showError('Failed to load school list from Google Sheets. Check CSV URL or network.');
   }
 })();
-
 </script>
 </body>
 </html>
