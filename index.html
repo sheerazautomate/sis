@@ -63,39 +63,6 @@
   /* ── MAIN ── */
   main { max-width: 1400px; margin: 0 auto; padding: 24px; }
 
-  /* ── GAS URL BANNER ── */
-  .gas-banner {
-    background: rgba(88,166,255,0.07);
-    border: 1px solid rgba(88,166,255,0.2);
-    border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  }
-  .gas-banner label {
-    font-family: var(--mono); font-size: 11px; color: var(--accent);
-    text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap;
-  }
-  .gas-banner input {
-    flex: 1; min-width: 260px;
-    background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text); padding: 7px 12px; border-radius: 6px;
-    font-family: var(--mono); font-size: 12px;
-  }
-  .gas-banner input:focus { outline: none; border-color: var(--accent); }
-  .gas-save-btn {
-    background: var(--accent); color: #ffffff; border: none; padding: 7px 16px;
-    border-radius: 6px; font-family: var(--mono); font-size: 12px;
-    font-weight: 600; cursor: pointer; white-space: nowrap;
-    transition: opacity 0.15s;
-  }
-  body:not(.light-theme) .gas-save-btn { color: #0d1117; }
-  .gas-save-btn:hover { opacity: 0.85; }
-  .gas-status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--muted); flex-shrink: 0; transition: background 0.3s;
-  }
-  .gas-status-dot.ok  { background: var(--accent2); }
-  .gas-status-dot.err { background: var(--danger); }
-
   /* ── FILTERS ── */
   .filter-panel {
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
@@ -231,8 +198,6 @@
     .filter-row { flex-direction: column; }
     .filter-group { min-width: 100%; }
     .btn-fetch { width: 100%; justify-content: center; }
-    .gas-banner { flex-direction: column; }
-    .gas-banner input { min-width: 100%; }
   }
 </style>
 </head>
@@ -251,14 +216,6 @@
 </header>
 
 <main>
-
-  <!-- GAS URL CONFIG -->
-  <div class="gas-banner">
-    <div class="gas-status-dot" id="gasDot"></div>
-    <label>GAS Web App URL</label>
-    <input type="url" id="gasUrlInput" placeholder="https://script.google.com/macros/s/…/exec" />
-    <button class="gas-save-btn" id="gasSaveBtn">Save</button>
-  </div>
 
   <!-- FILTERS -->
   <div class="filter-panel">
@@ -389,34 +346,14 @@
 // ════════════════════════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════════════════════════
-const CSV_URL    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
-const POLL_MS    = 2000;   // poll every 2 seconds
-const POLL_MAX   = 180;    // max polls (~6 min) before giving up
-const LS_GAS_KEY = "pesrp_gas_url";
+const CSV_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
+const GAS_URL  = "https://script.google.com/macros/s/AKfycbyPZSApngm56qdfMq9pWdqKOsrt5wCPnm_8ovYZ5P2GYB24CA0Rj8ipo7luLyoRPZUU/exec";
+const POLL_MS  = 2000;  // poll every 2 seconds
+const POLL_MAX = 180;   // max polls (~6 min) before giving up
 
-let gasUrl = localStorage.getItem(LS_GAS_KEY) || "";
 let pollTimer  = null;
 let pollCount  = 0;
 let isFetching = false;
-
-// ── GAS URL Config ──────────────────────────────────────────
-const gasInput   = document.getElementById('gasUrlInput');
-const gasDot     = document.getElementById('gasDot');
-const gasSaveBtn = document.getElementById('gasSaveBtn');
-
-gasInput.value = gasUrl;
-updateGasDot();
-
-gasSaveBtn.addEventListener('click', () => {
-  gasUrl = gasInput.value.trim();
-  localStorage.setItem(LS_GAS_KEY, gasUrl);
-  updateGasDot();
-});
-gasInput.addEventListener('keydown', e => { if (e.key === 'Enter') gasSaveBtn.click(); });
-
-function updateGasDot() {
-  gasDot.className = 'gas-status-dot' + (gasUrl ? ' ok' : ' err');
-}
 
 // ── Theme Toggle ────────────────────────────────────────────
 document.getElementById('themeToggle').addEventListener('click', function() {
@@ -502,10 +439,6 @@ document.getElementById('selMarkaz').addEventListener('change', function() {
 document.getElementById('btnFetch').addEventListener('click', startFetch);
 
 async function startFetch() {
-  if (!gasUrl) {
-    showError('Please enter and save your GAS Web App URL first.');
-    return;
-  }
   const markaz = document.getElementById('selMarkaz').value;
   if (!markaz) return;
 
@@ -517,7 +450,7 @@ async function startFetch() {
 
   // ── Step 1: Trigger GAS to fetch from SIS ──
   try {
-    const triggerUrl = `${gasUrl}?action=fetch&markaz=${encodeURIComponent(markaz)}`;
+    const triggerUrl = `${GAS_URL}?action=fetch&markaz=${encodeURIComponent(markaz)}`;
     // Fire-and-forget with a short timeout — GAS will run in background
     // We don't await completion; we'll poll for status
     fetch(triggerUrl).catch(() => {}); // deliberate non-await
@@ -542,7 +475,7 @@ async function pollStatus(markaz) {
   }
 
   try {
-    const url  = `${gasUrl}?action=status&markaz=${encodeURIComponent(markaz)}`;
+    const url  = `${GAS_URL}?action=status&markaz=${encodeURIComponent(markaz)}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
