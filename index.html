@@ -47,18 +47,20 @@
   body:not(.light-theme) .logo-mark { color: #0d1117; }
   .header-title { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
   .header-sub   { font-size: 12px; color: var(--muted); font-family: var(--mono); }
-  .header-actions { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .header-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
   .header-date {
     font-family: var(--mono); font-size: 12px; color: var(--accent);
     background: rgba(88,166,255,0.1); padding: 4px 10px; border-radius: 4px;
     border: 1px solid rgba(88,166,255,0.2);
   }
-  .theme-toggle {
+  .theme-toggle, .btn-cancel {
     background: var(--surface2); border: 1px solid var(--border); color: var(--text);
     padding: 6px 12px; border-radius: 6px; font-family: var(--mono); font-size: 12px;
     cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
   }
-  .theme-toggle:hover { border-color: var(--accent); }
+  .theme-toggle:hover, .btn-cancel:hover { border-color: var(--accent); }
+  .btn-cancel { border-color: rgba(248,81,73,0.4); color: var(--danger); display: none; }
+  .btn-cancel.visible { display: flex; }
 
   /* ── MAIN ── */
   main { max-width: 1400px; margin: 0 auto; padding: 24px; }
@@ -89,16 +91,21 @@
   select:focus { outline: none; border-color: var(--accent); }
   select:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .btn-fetch {
+  .btn-fetch, .btn-export {
     background: var(--accent); color: #ffffff; border: none;
     padding: 9px 22px; border-radius: 6px; font-family: var(--mono);
     font-weight: 600; font-size: 13px; cursor: pointer;
     transition: opacity 0.15s, transform 0.1s; white-space: nowrap; align-self: flex-end;
   }
-  body:not(.light-theme) .btn-fetch { color: #0d1117; }
-  .btn-fetch:hover { opacity: 0.85; }
-  .btn-fetch:active { transform: scale(0.97); }
-  .btn-fetch:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  body:not(.light-theme) .btn-fetch, body:not(.light-theme) .btn-export { color: #0d1117; }
+  .btn-fetch:hover, .btn-export:hover { opacity: 0.85; }
+  .btn-fetch:active, .btn-export:active { transform: scale(0.97); }
+  .btn-fetch:disabled, .btn-export:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-export {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); font-weight: 500;
+  }
+  .btn-export:hover { border-color: var(--accent); opacity: 1; }
 
   /* ── PROGRESS ── */
   .progress-wrap { margin-top: 14px; display: none; }
@@ -117,17 +124,34 @@
   .stream-status {
     margin-top: 10px; display: none;
     font-family: var(--mono); font-size: 11px;
-    color: var(--muted); display: none; align-items: center; gap: 8px;
+    color: var(--muted); align-items: center; gap: 8px;
   }
   .stream-status.visible { display: flex; }
   .pulse {
     width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
-    animation: pulse 1.2s ease-in-out infinite;
+    animation: pulse 1.2s ease-in-out infinite; flex-shrink: 0;
   }
   @keyframes pulse {
     0%,100% { opacity: 1; transform: scale(1); }
     50%      { opacity: 0.4; transform: scale(0.7); }
   }
+
+  /* ── COMPLETENESS BANNER ── */
+  .completeness {
+    margin-top: 12px; display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 12px; padding: 10px 14px;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--surface2);
+  }
+  .completeness.visible { display: flex; }
+  .completeness.ok      { border-color: rgba(63,185,80,0.45);  background: rgba(63,185,80,0.08); }
+  .completeness.warn    { border-color: rgba(227,179,65,0.45); background: rgba(227,179,65,0.08); }
+  .completeness.bad     { border-color: rgba(248,81,73,0.45);  background: rgba(248,81,73,0.08); }
+  .completeness .msg { flex: 1; min-width: 220px; }
+  .completeness .btn-retry {
+    background: var(--accent); color: #0d1117; border: none; padding: 6px 14px;
+    border-radius: 5px; font-family: var(--mono); font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+  .completeness .btn-retry:hover { opacity: 0.85; }
 
   /* ── CARDS ── */
   .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 12px; margin-bottom: 24px; }
@@ -148,13 +172,20 @@
   .tables-wrap { display: none; }
   .tables-wrap.visible { display: block; }
   .table-section { margin-bottom: 28px; }
-  .table-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .table-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
   .table-title  { font-size: 13px; font-weight: 600; font-family: var(--mono); letter-spacing: 0.04em; }
   .table-badge  {
     font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 10px;
     background: rgba(88,166,255,0.12); color: var(--accent); border: 1px solid rgba(88,166,255,0.2);
   }
-  .table-sort-hint { margin-left: auto; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .table-sort-hint { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .table-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .btn-mini {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 10px; border-radius: 5px; font-family: var(--mono); font-size: 11px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .btn-mini:hover { border-color: var(--accent); }
 
   .table-scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; }
@@ -171,12 +202,14 @@
   tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
   tbody tr:last-child { border-bottom: none; }
   tbody tr:hover { background: rgba(125,133,144,0.1); }
+  tbody tr.missing-row { opacity: 0.6; font-style: italic; }
   td { padding: 10px 14px; font-size: 13px; white-space: nowrap; }
   td.school-name { white-space: normal; max-width: 260px; font-weight: 500; }
   td.num { font-family: var(--mono); text-align: right; }
   td.num.present { color: var(--accent2); }
   td.num.absent  { color: var(--danger); }
   td.num.total   { color: var(--accent); }
+  td.emis { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 
   .status-pill {
     display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
@@ -186,18 +219,50 @@
   .status-marked   { background: rgba(63,185,80,0.12); color: var(--accent2); border: 1px solid rgba(63,185,80,0.25); }
   .status-unmarked { background: rgba(248,81,73,0.10); color: var(--danger);  border: 1px solid rgba(248,81,73,0.20); }
   .status-error    { background: rgba(227,179,65,0.10); color: var(--warn);   border: 1px solid rgba(227,179,65,0.20); }
+  .status-unknown  { background: rgba(125,133,144,0.12); color: var(--muted); border: 1px solid rgba(125,133,144,0.25); }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ── EXPORT MENU ── */
+  .export-wrap { position: relative; display: inline-block; align-self: flex-end; }
+  .export-menu {
+    display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 200;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    min-width: 260px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  .export-menu.visible { display: block; }
+  .export-menu button {
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    color: var(--text); font-family: var(--sans); font-size: 13px; padding: 9px 12px;
+    border-radius: 6px; cursor: pointer;
+  }
+  .export-menu button:hover { background: var(--surface2); }
+  .export-menu button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .export-menu .sep { height: 1px; background: var(--border); margin: 5px 0; }
+  .export-menu .hint { font-family: var(--mono); font-size: 10px; color: var(--muted); padding: 6px 12px 2px; text-transform: uppercase; letter-spacing: 0.06em; }
 
   /* ── STATES ── */
   .state-msg { text-align: center; padding: 60px 20px; color: var(--muted); font-family: var(--mono); font-size: 13px; display: none; }
   .state-msg.visible { display: block; }
   .state-msg .icon { font-size: 36px; margin-bottom: 12px; }
+  .state-msg .detail { margin-top: 10px; font-size: 11px; opacity: 0.75; word-break: break-word; max-width: 620px; margin-inline: auto; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent2);
+    color: var(--text); padding: 12px 18px; border-radius: 8px; font-family: var(--mono);
+    font-size: 12px; opacity: 0; pointer-events: none; transition: all 0.25s; z-index: 300;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35); max-width: 90vw;
+  }
+  .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { border-left-color: var(--danger); }
 
   @media (max-width: 640px) {
     main { padding: 12px; }
     .filter-row { flex-direction: column; }
     .filter-group { min-width: 100%; }
-    .btn-fetch { width: 100%; justify-content: center; }
+    .btn-fetch, .btn-export, .export-wrap { width: 100%; }
+    .export-menu { left: 0; right: 0; }
   }
 </style>
 </head>
@@ -211,6 +276,7 @@
   </div>
   <div class="header-actions">
     <div class="header-date" id="headerDate">—</div>
+    <button class="btn-cancel" id="btnCancel">✕ Cancel</button>
     <button class="theme-toggle" id="themeToggle">☀️ Light</button>
   </div>
 </header>
@@ -238,6 +304,19 @@
         <select id="selMarkaz" disabled><option value="">— Select Tehsil —</option></select>
       </div>
       <button class="btn-fetch" id="btnFetch" disabled>Fetch Attendance</button>
+      <div class="export-wrap">
+        <button class="btn-export" id="btnExport" disabled>⬇ Download CSV</button>
+        <div class="export-menu" id="exportMenu">
+          <div class="hint">Export current result set</div>
+          <button data-report="students">🎓 Students attendance</button>
+          <button data-report="teachers">👨‍🏫 Teachers attendance</button>
+          <button data-report="combined">🏫 Combined per-school</button>
+          <div class="sep"></div>
+          <button data-report="summary">📊 Summary totals</button>
+          <button data-report="unmarked">⚠️ Not-marked schools</button>
+          <button data-report="missing">❓ Missing / failed schools</button>
+        </div>
+      </div>
     </div>
 
     <div class="progress-wrap" id="progressWrap">
@@ -248,6 +327,10 @@
       <div class="pulse"></div>
       <span id="streamMsg">Waiting for data…</span>
     </div>
+    <div class="completeness" id="completenessBar">
+      <span class="msg" id="completenessMsg"></span>
+      <button class="btn-retry" id="btnRetryMissing" style="display:none">Retry missing</button>
+    </div>
   </div>
 
   <!-- SUMMARY CARDS -->
@@ -256,6 +339,7 @@
       <div class="card-icon">🏫</div>
       <div class="card-label">Total Schools</div>
       <div class="card-value blue" id="cSchools">—</div>
+      <div class="card-sub" id="cSchoolsSub">—</div>
     </div>
     <div class="card" id="cardSPresent">
       <div class="card-icon">🎓</div>
@@ -291,6 +375,7 @@
   <div class="state-msg" id="errorState">
     <div class="icon">⚠️</div>
     <div id="errorMsg">Something went wrong.</div>
+    <div class="detail" id="errorDetail"></div>
   </div>
 
   <!-- TABLES -->
@@ -299,12 +384,16 @@
       <div class="table-header">
         <span class="table-title">🎓 STUDENTS ATTENDANCE</span>
         <span class="table-badge" id="sBadge">0 schools</span>
-        <span class="table-sort-hint">Click column header to sort</span>
+        <div class="table-actions">
+          <span class="table-sort-hint">Click column header to sort</span>
+          <button class="btn-mini" data-quickexport="students">⬇ CSV</button>
+        </div>
       </div>
       <div class="table-scroll">
         <table id="studentsTable">
           <thead><tr>
             <th data-col="name"    data-table="s">School Name <span class="sort-arrow">↕</span></th>
+            <th data-col="emis"    data-table="s">EMIS <span class="sort-arrow">↕</span></th>
             <th data-col="level"   data-table="s">Level <span class="sort-arrow">↕</span></th>
             <th data-col="gender"  data-table="s">Gender <span class="sort-arrow">↕</span></th>
             <th data-col="present" data-table="s" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
@@ -321,18 +410,22 @@
       <div class="table-header">
         <span class="table-title">👨‍🏫 TEACHERS ATTENDANCE</span>
         <span class="table-badge" id="tBadge">0 schools</span>
-        <span class="table-sort-hint">Click column header to sort</span>
+        <div class="table-actions">
+          <span class="table-sort-hint">Click column header to sort</span>
+          <button class="btn-mini" data-quickexport="teachers">⬇ CSV</button>
+        </div>
       </div>
       <div class="table-scroll">
         <table id="teachersTable">
           <thead><tr>
-            <th data-col="name"    data-table="t">School Name <span class="sort-arrow">↕</span></th>
-            <th data-col="level"   data-table="t">Level <span class="sort-arrow">↕</span></th>
-            <th data-col="gender"  data-table="t">Gender <span class="sort-arrow">↕</span></th>
-            <th data-col="present" data-table="t" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
-            <th data-col="absent"  data-table="t" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
-            <th data-col="marked"  data-table="t" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
-            <th data-col="status"  data-table="t">Status <span class="sort-arrow">↕</span></th>
+            <th data-col="name"     data-table="t">School Name <span class="sort-arrow">↕</span></th>
+            <th data-col="emis"     data-table="t">EMIS <span class="sort-arrow">↕</span></th>
+            <th data-col="level"    data-table="t">Level <span class="sort-arrow">↕</span></th>
+            <th data-col="gender"   data-table="t">Gender <span class="sort-arrow">↕</span></th>
+            <th data-col="tPresent" data-table="t" style="text-align:right">Present <span class="sort-arrow">↕</span></th>
+            <th data-col="tAbsent"  data-table="t" style="text-align:right">Absent <span class="sort-arrow">↕</span></th>
+            <th data-col="tMarked"  data-table="t" style="text-align:right">Total Marked <span class="sort-arrow">↕</span></th>
+            <th data-col="tStatus"  data-table="t">Status <span class="sort-arrow">↕</span></th>
           </tr></thead>
           <tbody id="teachersTbody"></tbody>
         </table>
@@ -342,414 +435,1283 @@
 
 </main>
 
+<div class="toast" id="toast"></div>
+
 <script>
-// ════════════════════════════════════════════════════════════
+"use strict";
+// ════════════════════════════════════════════════════════════════════════════
 //  CONFIG
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 const CSV_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFGaSeUAf7BVkqHbcQg91XXeZbrVi8rATTJ-jxmOC1taoFXYvFa5J-LL6-Q1KR-Pz5AMS7tG8Skn2h/pub?gid=2066596328&single=true&output=csv";
 const GAS_URL  = "https://script.google.com/macros/s/AKfycbyPZSApngm56qdfMq9pWdqKOsrt5wCPnm_8ovYZ5P2GYB24CA0Rj8ipo7luLyoRPZUU/exec";
-const POLL_MS  = 2000;  // poll every 2 seconds
-const POLL_MAX = 180;   // max polls (~6 min) before giving up
 
-let pollTimer  = null;
-let pollCount  = 0;
-let isFetching = false;
+const CFG = {
+  // Polling: self-scheduling (never overlapping) with a growing interval.
+  pollStartMs:  1500,
+  pollMaxMs:    6000,
+  pollStepMs:   150,
+  pollJitter:   0.2,
+  pollTimeoutMs: 10000,
+  maxPolls:     260,
 
-// ── Theme Toggle ────────────────────────────────────────────
-document.getElementById('themeToggle').addEventListener('click', function() {
-  document.body.classList.toggle('light-theme');
-  this.innerHTML = document.body.classList.contains('light-theme') ? '🌙 Dark' : '☀️ Light';
-});
+  // Trigger: awaited with a timeout, retried on hard failure.
+  triggerTimeoutMs: 20000,
+  triggerRetries:   3,
 
-// ════════════════════════════════════════════════════════════
-//  CSV PARSING & FILTER POPULATION (unchanged)
-// ════════════════════════════════════════════════════════════
-let allRows = [];
+  // Completeness / resume
+  maxRounds:      3,     // initial attempt + up to 2 resume rounds
+  roundGateMs:    4000,  // ignore a "done" this soon after a resume trigger
+  resumeGracePolls: 4,   // polls to let a resume trigger take effect before judging it
+  stallPolls:     6,     // consecutive polls with no progress => poke the server
+  maxNetErrors:   6,     // consecutive transport failures => give up
+  runDeadlineMs:  8 * 60 * 1000,
 
-function parseCSV(text) {
-  const lines   = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  return lines.slice(1).map(line => {
-    const vals = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
-      else { cur += c; }
-    }
-    vals.push(cur.trim());
-    const row = {};
-    headers.forEach((h, i) => row[h] = (vals[i] || '').replace(/^"|"$/g, '').trim());
-    return row;
-  }).filter(r => r['EMIS']);
+  // School-list CSV
+  csvRetries:     3,
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SMALL UTILITIES
+// ════════════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function esc(v) {
+  return String(v === null || v === undefined ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function unique(arr) { return [...new Set(arr)].filter(Boolean).sort(); }
+/** Coerce to a finite number; return null when the value is not numeric. */
+function num(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v).replace(/,/g, '').trim();
+  if (s === '' || s === '—' || s === '-') return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function str(v) { return v === null || v === undefined ? '' : String(v).trim(); }
+
+function uuid() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  } catch (e) { /* fall through */ }
+  return 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+function fmtInt(n) { return (n === null || n === undefined) ? '—' : Number(n).toLocaleString(); }
+
+function todayStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function stamp() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${todayStr()}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+function slug(s) {
+  return String(s || 'export').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 60) || 'export';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CSV PARSING — RFC 4180 state machine.
+//  The previous implementation split on "\n" first, so any quoted field
+//  containing a newline (school names do) split one record into two and
+//  silently corrupted the school master list.
+// ════════════════════════════════════════════════════════════════════════════
+function parseCSV(text) {
+  const rows = [];
+  let field = '', row = [], inQ = false;
+  const src = String(text).replace(/^\uFEFF/, '');
+
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (inQ) {
+      if (c === '"') {
+        if (src[i + 1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += c;
+    } else if (c === '"') {
+      inQ = true;
+    } else if (c === ',') {
+      row.push(field); field = '';
+    } else if (c === '\n') {
+      row.push(field); rows.push(row); row = []; field = '';
+    } else if (c === '\r') {
+      if (src[i + 1] === '\n') i++;
+      row.push(field); rows.push(row); row = []; field = '';
+    } else {
+      field += c;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+
+  if (!rows.length) return [];
+  const headers = rows[0].map(h => String(h).trim());
+  return rows.slice(1)
+    .filter(r => r.some(c => String(c).trim() !== ''))
+    .map(r => {
+      const o = {};
+      headers.forEach((h, i) => { o[h] = String(r[i] === undefined ? '' : r[i]).trim(); });
+      return o;
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CSV BUILDING + DOWNLOAD
+// ════════════════════════════════════════════════════════════════════════════
+function csvEscape(v) {
+  let s = v === null || v === undefined ? '' : String(v);
+  // Stop spreadsheet formula injection on values that came from the network.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function buildCSV(headers, rows) {
+  const lines = [headers.map(csvEscape).join(',')];
+  for (const r of rows) lines.push(headers.map(h => csvEscape(r[h])).join(','));
+  return lines.join('\r\n');
+}
+
+function downloadCSV(filename, csvText) {
+  // BOM so Excel reads UTF-8 (Urdu / school names) correctly.
+  const payload = '\uFEFF' + csvText;
+  const blob = new Blob([payload], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+function toast(msg, isErr) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('visible');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('visible'), 3200);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SCHOOL MASTER LIST (the published sheet) — used for the cascading
+//  selects AND, critically, to know how many schools a Markaz must return.
+// ════════════════════════════════════════════════════════════════════════════
+let allRows = [];           // raw master rows
+let masterLoaded = false;
+
+function unique(arr) { return [...new Set(arr)].filter(Boolean).sort((a, b) => a.localeCompare(b)); }
+
+/** Master rows matching the current selection. Wing is optional ("All Wings"). */
+function masterRowsFor(district, wing, tehsil, markaz) {
+  return allRows.filter(r =>
+    (!district || r['District'] === district) &&
+    (!wing     || r['Wing']     === wing) &&
+    (!tehsil   || r['Tehsil']   === tehsil) &&
+    (!markaz   || r['Markaz']   === markaz)
+  );
+}
 
 function fillSelect(el, options, placeholder) {
-  el.innerHTML = `<option value="">${placeholder}</option>` +
-    options.map(o => `<option value="${o}">${o}</option>`).join('');
+  el.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = ''; ph.textContent = placeholder;
+  el.appendChild(ph);
+  for (const o of options) {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;   // textContent => no HTML injection
+    el.appendChild(opt);
+  }
   el.disabled = false;
 }
 
-document.getElementById('selDistrict').addEventListener('change', function() {
-  const d = this.value;
-  const selW = document.getElementById('selWing');
-  const selT = document.getElementById('selTehsil');
-  const selM = document.getElementById('selMarkaz');
-  selT.innerHTML = '<option value="">— Select Wing —</option>'; selT.disabled = true;
-  selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true;
-  document.getElementById('btnFetch').disabled = true;
-  if (!d) { selW.innerHTML = '<option value="">— Select District —</option>'; selW.disabled = true; return; }
-  const wings = unique(allRows.filter(r => r['District'] === d).map(r => r['Wing']));
-  fillSelect(selW, wings, '— All Wings —');
-  selW.dispatchEvent(new Event('change'));
-});
+function selectVal(id) { return $(id).value; }
 
-document.getElementById('selWing').addEventListener('change', function() {
-  const d = document.getElementById('selDistrict').value;
-  const w = this.value;
-  const selT = document.getElementById('selTehsil');
-  const selM = document.getElementById('selMarkaz');
-  selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true;
-  document.getElementById('btnFetch').disabled = true;
-  if (!d) return;
-  const filtered = allRows.filter(r => r['District'] === d && (!w || r['Wing'] === w));
-  fillSelect(selT, unique(filtered.map(r => r['Tehsil'])), '— Select Tehsil —');
-});
+// ════════════════════════════════════════════════════════════════════════════
+//  SELECTION STATE  (persisted so a reload keeps the officer's context)
+// ════════════════════════════════════════════════════════════════════════════
+const LS_KEY = 'pesrp.dashboard.v2';
 
-document.getElementById('selTehsil').addEventListener('change', function() {
-  const d = document.getElementById('selDistrict').value;
-  const w = document.getElementById('selWing').value;
-  const t = this.value;
-  const selM = document.getElementById('selMarkaz');
-  document.getElementById('btnFetch').disabled = true;
-  if (!t) { selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true; return; }
-  const filtered = allRows.filter(r => r['District'] === d && (!w || r['Wing'] === w) && r['Tehsil'] === t);
-  fillSelect(selM, unique(filtered.map(r => r['Markaz'])), '— Select Markaz —');
-});
-
-document.getElementById('selMarkaz').addEventListener('change', function() {
-  document.getElementById('btnFetch').disabled = !this.value;
-});
-
-// ════════════════════════════════════════════════════════════
-//  FETCH + POLL LOGIC
-// ════════════════════════════════════════════════════════════
-document.getElementById('btnFetch').addEventListener('click', startFetch);
-
-async function startFetch() {
-  const markaz = document.getElementById('selMarkaz').value;
-  if (!markaz) return;
-
-  stopPolling();
-  isFetching = true;
-  resetUI();
-  setFetchingUI(true);
-  showProgress(0, 0, 'Sending fetch request to server…');
-
-  // ── Step 1: Trigger GAS to fetch from SIS ──
+function saveState() {
   try {
-    const triggerUrl = `${GAS_URL}?action=fetch&markaz=${encodeURIComponent(markaz)}`;
-    // Fire-and-forget with a short timeout — GAS will run in background
-    // We don't await completion; we'll poll for status
-    fetch(triggerUrl).catch(() => {}); // deliberate non-await
-  } catch (e) { /* ignore */ }
-
-  // Small delay before first poll to let GAS start writing
-  await sleep(1500);
-
-  // ── Step 2: Begin polling for status ──
-  pollCount = 0;
-  const markazForPoll = markaz;
-  pollTimer = setInterval(() => pollStatus(markazForPoll), POLL_MS);
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      district: selectVal('selDistrict'), wing: selectVal('selWing'),
+      tehsil:   selectVal('selTehsil'),   markaz: selectVal('selMarkaz'),
+      light: document.body.classList.contains('light-theme'),
+    }));
+  } catch (e) { /* private mode */ }
 }
 
-async function pollStatus(markaz) {
-  pollCount++;
-  if (pollCount > POLL_MAX) {
-    stopPolling();
-    setFetchingUI(false);
-    showError('Timed out waiting for data. The fetch may still be running — try again in a moment.');
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; }
+  catch (e) { return {}; }
+}
+
+function setSelectValue(el, val) {
+  if (!val) return false;
+  const hit = [...el.options].some(o => o.value === val);
+  if (hit) { el.value = val; return true; }
+  return false;
+}
+
+// ── Cascading selects ───────────────────────────────────────
+function onDistrictChange() {
+  const d = selectVal('selDistrict');
+  const selW = $('selWing'), selT = $('selTehsil'), selM = $('selMarkaz');
+  selT.innerHTML = '<option value="">— Select Wing —</option>'; selT.disabled = true;
+  selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true;
+  $('btnFetch').disabled = true;
+  if (!d) { selW.innerHTML = '<option value="">— Select District —</option>'; selW.disabled = true; return; }
+  fillSelect(selW, unique(allRows.filter(r => r['District'] === d).map(r => r['Wing'])), '— All Wings —');
+  onWingChange();
+}
+
+function onWingChange() {
+  const d = selectVal('selDistrict'), w = selectVal('selWing');
+  const selT = $('selTehsil'), selM = $('selMarkaz');
+  selM.innerHTML = '<option value="">— Select Wing —</option>'; selM.disabled = true;
+  $('btnFetch').disabled = true;
+  if (!d) return;
+  fillSelect(selT, unique(masterRowsFor(d, w).map(r => r['Tehsil'])), '— Select Tehsil —');
+}
+
+function onTehsilChange() {
+  const d = selectVal('selDistrict'), w = selectVal('selWing'), t = selectVal('selTehsil');
+  const selM = $('selMarkaz');
+  $('btnFetch').disabled = true;
+  if (!t) { selM.innerHTML = '<option value="">— Select Tehsil —</option>'; selM.disabled = true; return; }
+  fillSelect(selM, unique(masterRowsFor(d, w, t).map(r => r['Markaz'])), '— Select Markaz —');
+}
+
+function onMarkazChange() {
+  $('btnFetch').disabled = !selectVal('selMarkaz');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ROW NORMALISATION
+//  One object per school holding BOTH student and teacher figures, so the two
+//  tables and every export share a single source of truth.
+// ════════════════════════════════════════════════════════════════════════════
+const ERROR_STATUSES = new Set(['error', 'fail', 'failed', 'failure', 'timeout', 'exception', 'no_data', 'nodata']);
+
+function normalizeRow(raw) {
+  const emis   = str(raw.emis || raw.EMIS || raw.emis_code);
+  const name   = str(raw.name || raw.school || raw.schoolName) || '—';
+  const level  = str(raw.level || raw.Level) || '—';
+  const gender = str(raw.gender || raw.Gender) || '—';
+  const rawStatus = str(raw.status || raw.state || '').toLowerCase();
+
+  let state = 'unknown';
+  if (rawStatus === 'ok' || rawStatus === 'success' || rawStatus === 'done') state = 'ok';
+  else if (ERROR_STATUSES.has(rawStatus)) state = 'error';
+
+  const sP = num(raw.sPresent), sA = num(raw.sAbsent), sM = num(raw.sMarked);
+  const tP = num(raw.tPresent), tA = num(raw.tAbsent), tM = num(raw.tMarked);
+
+  return {
+    key:  emis || `~${name}|${level}|${gender}`,
+    emis, name, level, gender,
+    state,
+    present: sP, absent: sA, marked: sM,
+    tPresent: tP, tAbsent: tA, tMarked: tM,
+    // 1 = marked, 0 = not marked, -1 = error/unknown
+    status:  state === 'ok' ? ((sM !== null && sM > 0) ? 1 : 0) : (state === 'error' ? -1 : -2),
+    tStatus: state === 'ok' ? ((tM !== null && tM > 0) ? 1 : 0) : (state === 'error' ? -1 : -2),
+    note: str(raw.error || raw.message || raw.note || ''),
+    ts:   str(raw.timestamp || raw.fetchedAt || ''),
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THE RUN — one object per fetch so stale/overlapping responses from a
+//  previous click can never land in the current view.
+// ════════════════════════════════════════════════════════════════════════════
+let run = null;
+let generation = 0;
+
+function newRun(selection) {
+  generation++;
+  const expected = new Map();
+  for (const m of selection.master) {
+    const emis = str(m['EMIS'] || m['Emis'] || m['emis'] || m['EMIS Code'] || m['EMISCode']);
+    if (!emis) continue;
+    expected.set(emis, {
+      emis,
+      name:   str(m['School Name'] || m['School'] || m['Name'] || m['schoolName']) || emis,
+      level:  str(m['Level'] || m['level']),
+      gender: str(m['Gender'] || m['gender']),
+    });
+  }
+  return {
+    gen: generation,
+    id: uuid(),
+    sel: selection,
+    expected,
+    store: new Map(),          // key -> normalized row (UNION across all rounds)
+    round: 1,
+    polls: 0,
+    netErrors: 0,
+    lastFetched: -1,
+    stall: 0,
+    lastMissingCount: -1,
+    roundGateUntil: 0,
+    pendingResume: false,
+    resumePolls: 0,
+    storeAtResume: 0,
+    startedAt: Date.now(),
+    deadline: Date.now() + CFG.runDeadlineMs,
+    phase: 'triggering',       // triggering | polling | done | partial | error | cancelled
+    serverEchoesRunId: null,
+    serverSawRunId: false,
+    log: [],
+  };
+}
+
+function logRun(r, msg) {
+  r.log.push(`[${new Date().toISOString()}] ${msg}`);
+  if (r.log.length > 200) r.log.shift();
+}
+
+function isStale(r) { return !r || r.gen !== generation || r.phase === 'cancelled'; }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  HTTP — GAS answers with an HTML error page (auth wall, "script function
+//  not found", quota) using HTTP 200. That used to surface as a confusing
+//  JSON parse error; now it is detected and explained.
+// ════════════════════════════════════════════════════════════════════════════
+async function gasGet(params, timeoutMs) {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const resp = await fetch(`${GAS_URL}?${qs.toString()}`, {
+      signal: ctrl.signal,
+      redirect: 'follow',
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' },
+    });
+    const text = await resp.text();
+    if (!resp.ok) return { ok: false, kind: 'http', status: resp.status, body: text };
+    const trimmed = text.trim();
+    if (!trimmed) return { ok: false, kind: 'empty', body: text };
+    if (trimmed[0] === '<') return { ok: false, kind: 'html', body: text };
+    try {
+      return { ok: true, data: JSON.parse(trimmed) };
+    } catch (e) {
+      return { ok: false, kind: 'badjson', body: text, error: e.message };
+    }
+  } catch (e) {
+    const timedOut = e && e.name === 'AbortError';
+    return { ok: false, kind: timedOut ? 'timeout' : 'network', error: e && e.message ? e.message : String(e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function describeGasFailure(res) {
+  switch (res.kind) {
+    case 'timeout':
+      return { title: 'The server did not answer in time.',
+               detail: 'Apps Script is cold-starting or overloaded. Nothing was lost — the run is still polling.' };
+    case 'network':
+      return { title: 'Network error reaching Apps Script.',
+               detail: res.error || 'Check the connection, then retry.' };
+    case 'http':
+      return { title: `Apps Script returned HTTP ${res.status}.`,
+               detail: (res.body || '').replace(/<[^>]*>/g, ' ').slice(0, 300) };
+    case 'html': {
+      const flat = (res.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      let hint = 'Apps Script answered with an HTML page instead of JSON.';
+      if (/authorization|sign in|login|permission/i.test(flat))
+        hint = 'The web app is asking for authorisation. Open the Apps Script URL once in a browser, grant access, and redeploy as "Anyone".';
+      else if (/script function not found|no function|not found/i.test(flat))
+        hint = 'The deployed web app has no doGet handler, or an older version is deployed. Re-deploy the script as a new web-app version.';
+      else if (/quota|limit exceeded|too many/i.test(flat))
+        hint = 'Apps Script quota/rate limit hit. Wait ~1 minute and retry; lower the polling rate if this repeats.';
+      return { title: 'Apps Script returned a web page, not data.', detail: `${hint} — page text: ${flat.slice(0, 240)}` };
+    }
+    case 'badjson':
+      return { title: 'Apps Script returned malformed JSON.',
+               detail: (res.body || '').slice(0, 240) };
+    case 'empty':
+      return { title: 'Apps Script returned an empty body.', detail: 'The deployment may be broken.' };
+    default:
+      return { title: 'Unexpected response.', detail: res.error || '' };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TRIGGER — awaited and verified, instead of fire-and-forget.
+//  Returns 'accepted' | 'background' | 'failed'
+// ════════════════════════════════════════════════════════════════════════════
+async function triggerFetch(r, emisList) {
+  const params = { action: 'fetch', markaz: r.sel.markaz, runId: r.id, round: r.round };
+  if (emisList && emisList.length) params.emis = emisList.join(',');
+
+  for (let attempt = 1; attempt <= CFG.triggerRetries; attempt++) {
+    if (isStale(r)) return 'cancelled';
+    const res = await gasGet(params, CFG.triggerTimeoutMs);
+    if (isStale(r)) return 'cancelled';
+
+    if (res.ok) {
+      if (res.data && res.data.runId) r.serverEchoesRunId = true;
+      if (res.data && res.data.error) {
+        // Server explicitly rejected the trigger.
+        logRun(r, `trigger rejected: ${res.data.error}`);
+        if (attempt < CFG.triggerRetries) { await sleep(700 * attempt); continue; }
+        r.lastFailure = { title: 'The server refused the fetch request.', detail: String(res.data.error) };
+        return 'failed';
+      }
+      logRun(r, `trigger accepted (attempt ${attempt})`);
+      return 'accepted';
+    }
+
+    // A timeout on the trigger is NOT a failure: Apps Script commonly keeps
+    // running after the HTTP response is cut. Retry only on hard errors.
+    if (res.kind === 'timeout') {
+      logRun(r, 'trigger timed out — assuming the server is working in the background');
+      return 'background';
+    }
+
+    logRun(r, `trigger attempt ${attempt} failed: ${res.kind} ${res.error || ''}`);
+    r.lastFailure = describeGasFailure(res);
+    if (attempt < CFG.triggerRetries) await sleep(600 * attempt * attempt);
+  }
+  return 'failed';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  FETCH ENTRY POINT
+// ════════════════════════════════════════════════════════════════════════════
+async function startFetch(opts) {
+  const markaz = selectVal('selMarkaz');
+  if (!markaz) return;
+
+  cancelRun(true);   // bump generation so any in-flight poll is discarded
+
+  const master = masterRowsFor(selectVal('selDistrict'), selectVal('selWing'),
+                               selectVal('selTehsil'), markaz);
+  run = newRun({
+    district: selectVal('selDistrict'), wing: selectVal('selWing'),
+    tehsil: selectVal('selTehsil'), markaz, master,
+    resumeOnly: !!(opts && opts.resumeOnly),
+  });
+  const r = run;
+
+  resetUI();
+  setBusy(true);
+  saveState();
+  showProgress(0, `Starting fetch for ${markaz}…`);
+  setStreamMsg(`Run ${r.id.slice(0, 8)} · round 1/${CFG.maxRounds} · ${r.expected.size} schools expected from the school list`);
+
+  const triggerOutcome = await triggerFetch(r, null);
+  if (isStale(r)) return;
+
+  if (triggerOutcome === 'failed') {
+    finishRun(r, 'error', r.lastFailure || { title: 'Could not start the fetch.', detail: '' });
     return;
   }
 
-  try {
-    const url  = `${GAS_URL}?action=status&markaz=${encodeURIComponent(markaz)}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
+  r.phase = 'polling';
+  await pollLoop(r);
+}
 
-    if (data.error) {
-      stopPolling();
-      setFetchingUI(false);
-      showError(data.error);
-      return;
-    }
+/** Resume just the schools the server never reported on. */
+async function retryMissing() {
+  if (!run || (run.phase !== 'partial' && run.phase !== 'done')) return;
+  const missing = missingList(run);
+  if (!missing.length) { toast('Nothing missing — the result set is already complete.'); return; }
 
-    const state   = data.state   || 'empty';
-    const rows    = data.rows    || [];
-    const fetched = data.fetched || 0;
-    const total   = data.total   || 0;
+  cancelRun(true);
+  const prev = run;
+  const r = newRun({
+    district: prev.sel.district, wing: prev.sel.wing,
+    tehsil: prev.sel.tehsil, markaz: prev.sel.markaz, master: prev.sel.master,
+    resumeOnly: true,
+  });
+  // Carry the data we already have so nothing is lost while retrying.
+  for (const [k, v] of prev.store) r.store.set(k, v);
+  r.round = 1;
+  run = r;
 
-    // Show progress bar based on server-reported progress
-    if (state === 'fetching') {
-      const pct = total > 0 ? Math.round((fetched / total) * 100) : 0;
-      showProgress(pct, fetched, `Server fetching: ${fetched} / ${total} schools…`);
-      setStreamMsg(`Streaming partial data (${rows.length} rows received so far)…`);
-    }
+  resetUI();
+  setBusy(true);
+  showProgress(0, `Retrying ${missing.length} missing school(s)…`);
+  setStreamMsg(`Resume run ${r.id.slice(0, 8)} · asking the server for ${missing.length} EMIS code(s)`);
+  renderAll();
 
-    // Render whatever rows we have so far (partial render)
-    if (rows.length > 0) {
-      renderFromGAS(rows);
-      if (data.todayDate) document.getElementById('headerDate').textContent = data.todayDate;
-    }
+  const outcome = await triggerFetch(r, missing.map(m => m.emis));
+  if (isStale(r)) return;
+  if (outcome === 'failed') {
+    renderAll();
+    finishRun(r, 'partial', {
+      title: 'Could not reach the server for the retry.',
+      detail: (r.lastFailure && r.lastFailure.detail) || '',
+    });
+    return;
+  }
+  r.phase = 'polling';
+  await pollLoop(r);
+}
 
-    // If locked, just wait — server says another request is writing
-    if (state === 'locked') {
-      setStreamMsg('Another user is fetching this Markaz. Waiting for their data…');
-      return;
-    }
-
-    if (state === 'done') {
-      stopPolling();
-      setFetchingUI(false);
-      hideProgress();
-      hideStreamStatus();
-      if (rows.length === 0) {
-        showError('Fetch completed but no data was returned. Check your GAS logs.');
-      }
-    }
-
-    if (state === 'error') {
-      stopPolling();
-      setFetchingUI(false);
-      showError(data.error || 'Unknown server error.');
-    }
-
-  } catch(e) {
-    // Network hiccup — don't stop polling, just note it
-    setStreamMsg(`Poll attempt ${pollCount}… (last error: ${e.message})`);
+function cancelRun(silent) {
+  if (run && run.phase !== 'done' && run.phase !== 'partial' && run.phase !== 'error') {
+    run.phase = 'cancelled';
+    logRun(run, 'cancelled');
+  }
+  generation++;
+  if (!silent) {
+    setBusy(false);
+    hideProgress();
+    hideStreamStatus();
+    toast('Fetch cancelled.');
   }
 }
 
-function stopPolling() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  isFetching = false;
+// ════════════════════════════════════════════════════════════════════════════
+//  POLL LOOP — sequential by construction, so two requests can never be in
+//  flight at once and an older response can never overwrite a newer one.
+// ════════════════════════════════════════════════════════════════════════════
+function pollInterval(r) {
+  const base = Math.min(CFG.pollMaxMs, CFG.pollStartMs + r.polls * CFG.pollStepMs);
+  const jitter = base * CFG.pollJitter * (Math.random() * 2 - 1);
+  return Math.max(400, Math.round(base + jitter));
 }
 
-// ════════════════════════════════════════════════════════════
-//  RENDER FROM GAS JSON
-//  GAS returns rows with: name, emis, level, gender,
-//  sPresent, sAbsent, sMarked, tPresent, tAbsent, tMarked,
-//  timestamp, status
-// ════════════════════════════════════════════════════════════
-let sortState = { s: { col: 'status', asc: true }, t: { col: 'status', asc: true } };
-let lastRows  = [];
+async function pollLoop(r) {
+  while (!isStale(r)) {
+    if (Date.now() > r.deadline) {
+      finishRun(r, runHasData(r) ? 'partial' : 'error', {
+        title: 'Timed out waiting for the server.',
+        detail: `Gave up after ${Math.round((Date.now() - r.startedAt) / 1000)}s. ${coverageText(r)}`,
+      });
+      return;
+    }
+    if (r.polls >= CFG.maxPolls) {
+      finishRun(r, runHasData(r) ? 'partial' : 'error', {
+        title: 'Reached the polling limit.',
+        detail: coverageText(r),
+      });
+      return;
+    }
 
-function renderFromGAS(rows) {
-  lastRows = rows;
-  renderTables();
-  renderCards();
-  document.getElementById('tablesWrap').classList.add('visible');
-  document.getElementById('emptyState').classList.remove('visible');
-  document.querySelectorAll('.card').forEach(c => c.classList.add('visible'));
+    r.polls++;
+    const stop = await pollOnce(r);
+    if (stop || isStale(r)) return;
+
+    await sleep(pollInterval(r));
+  }
 }
 
-function gasRowToObj(r) {
-  return {
-    name:    r.name    || '—',
-    emis:    r.emis    || '',
-    level:   r.level   || '—',
-    gender:  r.gender  || '—',
-    // Students
-    present: r.sPresent !== null && r.sPresent !== undefined ? r.sPresent : null,
-    absent:  r.sAbsent  !== null && r.sAbsent  !== undefined ? r.sAbsent  : null,
-    marked:  r.sMarked  !== null && r.sMarked  !== undefined ? r.sMarked  : null,
-    // Teachers (kept separate for teacher table)
-    tPresent: r.tPresent !== null && r.tPresent !== undefined ? r.tPresent : null,
-    tAbsent:  r.tAbsent  !== null && r.tAbsent  !== undefined ? r.tAbsent  : null,
-    tMarked:  r.tMarked  !== null && r.tMarked  !== undefined ? r.tMarked  : null,
-    status:  r.status === 'ok' ? (r.sMarked > 0 ? 1 : 0) : -1,
-    tStatus: r.status === 'ok' ? (r.tMarked > 0 ? 1 : 0) : -1,
-    error:   r.status !== 'ok',
-  };
+async function pollOnce(r) {
+  const res = await gasGet({ action: 'status', markaz: r.sel.markaz, runId: r.id }, CFG.pollTimeoutMs);
+  if (isStale(r)) return true;
+
+  if (!res.ok) {
+    r.netErrors++;
+    const info = describeGasFailure(res);
+    logRun(r, `poll ${r.polls} failed: ${res.kind} ${res.error || ''}`);
+    setStreamMsg(`${info.title} (attempt ${r.netErrors}/${CFG.maxNetErrors})`);
+    if (r.netErrors >= CFG.maxNetErrors) {
+      finishRun(r, runHasData(r) ? 'partial' : 'error', {
+        title: info.title,
+        detail: `${info.detail} — ${CFG.maxNetErrors} consecutive failures. ${coverageText(r)}`,
+      });
+      return true;
+    }
+    return false;
+  }
+  r.netErrors = 0;
+
+  const data = res.data || {};
+
+  if (data.runId) {
+    r.serverSawRunId = true;
+    if (data.runId !== r.id) {
+      // The server is reporting on somebody else's run. Ignore it rather than
+      // showing another user's numbers under this Markaz.
+      logRun(r, `ignoring status for foreign runId ${data.runId}`);
+      setStreamMsg('Server is busy with another run — waiting…');
+      return false;
+    }
+  }
+
+  if (data.error) {
+    const msg = String(data.error);
+    logRun(r, `server error: ${msg}`);
+    if (/required|missing parameter|invalid/i.test(msg) && !runHasData(r)) {
+      finishRun(r, 'error', { title: 'The server rejected the request.', detail: msg });
+      return true;
+    }
+    setStreamMsg(`Server says: ${msg}`);
+    return false;
+  }
+
+  // ── Merge rows. UNION by key — never replace the store, so a short batch
+  //    can never erase schools we already received.
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  let added = 0;
+  for (const raw of rows) {
+    if (!raw || typeof raw !== 'object') continue;
+    const n = normalizeRow(raw);
+    if (!n.emis && n.name === '—') continue;
+    const prev = r.store.get(n.key);
+    // Keep the more informative record for a school seen twice.
+    if (!prev || (prev.state !== 'ok' && n.state === 'ok') || (!prev.ts && n.ts)) {
+      if (!prev) added++;
+      r.store.set(n.key, n);
+    }
+  }
+  if (added) logRun(r, `merged ${added} new school(s), total ${r.store.size}`);
+
+  // Track whether a resume trigger has taken effect yet. Without this grace a
+  // "done" that arrives before the server processed our retry would be judged
+  // as "no progress" and the run would stop early — the exact symptom of
+  // "have to click many times".
+  if (r.pendingResume) {
+    if (r.store.size > r.storeAtResume) { r.pendingResume = false; r.resumePolls = 0; }
+    else r.resumePolls++;
+  }
+
+  const state   = str(data.state).toLowerCase() || 'empty';
+  const fetched = num(data.fetched);
+  const total   = num(data.total);
+  if (data.todayDate) $('headerDate').textContent = String(data.todayDate);
+
+  // Progress
+  if (state === 'fetching' || state === 'running' || state === 'working') {
+    const pct = (total && total > 0) ? Math.round(((fetched || 0) / total) * 100)
+              : (r.expected.size ? Math.round((coveredCount(r) / r.expected.size) * 100) : 0);
+    showProgress(Math.min(99, pct),
+      total ? `Server fetching: ${fetched || 0} / ${total} schools…`
+            : `Received ${r.store.size} school(s) so far…`);
+    setStreamMsg(`Round ${r.round}/${CFG.maxRounds} · ${coverageText(r)}`);
+
+    // Stall detection: poke the server if progress has frozen.
+    const marker = (fetched === null ? r.store.size : fetched);
+    if (marker === r.lastFetched) r.stall++; else { r.stall = 0; r.lastFetched = marker; }
+    if (r.stall >= CFG.stallPolls) {
+      r.stall = 0;
+      logRun(r, 'progress stalled — poking the server to continue');
+      setStreamMsg('No progress for a while — nudging the server to continue…');
+      gasGet({ action: 'fetchChunk', markaz: r.sel.markaz, runId: r.id }, CFG.pollTimeoutMs);
+    }
+    renderAll();
+    return false;
+  }
+
+  if (state === 'locked') {
+    setStreamMsg('Another user is fetching this Markaz. Waiting for their data…');
+    showProgress(r.expected.size ? Math.round((coveredCount(r) / r.expected.size) * 100) : 0,
+                 'Waiting on another user’s fetch…');
+    renderAll();
+    return false;
+  }
+
+  if (state === 'error' || state === 'failed') {
+    finishRun(r, runHasData(r) ? 'partial' : 'error', {
+      title: 'The server reported an error.',
+      detail: `${str(data.error) || 'No message supplied.'} — ${coverageText(r)}`,
+    });
+    return true;
+  }
+
+  if (state === 'done' || state === 'complete' || state === 'completed') {
+    return handleDone(r);
+  }
+
+  // 'empty' or unknown: keep waiting, but show that we have nothing yet.
+  setStreamMsg(`Server state "${state || 'unknown'}" · ${coverageText(r)}`);
+  renderAll();
+  return false;
 }
 
-function sortData(data, col, asc) {
-  const colMap = {
-    // For teacher table, map "present"→tPresent etc.
-    tpresent: 'tPresent', tabsent: 'tAbsent', tmarked: 'tMarked'
-  };
-  const realCol = colMap[col] || col;
+// ════════════════════════════════════════════════════════════════════════════
+//  COMPLETENESS GATE — the fix for "have to click many times".
+//  "done" is only accepted when every EMIS code from the school master list
+//  has been reported. Otherwise we automatically resume the missing ones.
+// ════════════════════════════════════════════════════════════════════════════
+function coveredCount(r) {
+  if (!r.expected.size) return r.store.size;
+  let n = 0;
+  for (const emis of r.expected.keys()) if (r.store.has(emis)) n++;
+  return n;
+}
+
+function missingList(r) {
+  const out = [];
+  for (const [emis, m] of r.expected) {
+    if (!r.store.has(emis)) out.push(m);
+  }
+  return out;
+}
+
+/** Schools the master list expects but that are still missing. */
+function missingRows(r) {
+  return missingList(r).map(m => normalizeRow({
+    emis: m.emis, name: m.name, level: m.level, gender: m.gender, status: 'missing',
+  }));
+}
+
+function coverageText(r) {
+  if (!r.expected.size) return `${r.store.size} school(s) received (no school list to verify against)`;
+  return `${coveredCount(r)} / ${r.expected.size} schools received`;
+}
+
+function runHasData(r) { return r.store.size > 0; }
+
+function handleDone(r) {
+  // Guard against a "done" that arrives instantly from a *previous* run's cache.
+  if (Date.now() < r.roundGateUntil) {
+    setStreamMsg('Server says done, but that looks like the previous run — verifying…');
+    return false;
+  }
+
+  const missing = missingList(r);
+
+  // No master list => we cannot verify completeness. Accept, but say so.
+  if (!r.expected.size) {
+    finishRun(r, r.store.size ? 'done' : 'error', r.store.size
+      ? { title: 'Complete (unverified).', detail: 'The school master list is unavailable, so completeness could not be checked.' }
+      : { title: 'Fetch completed but no data was returned.', detail: 'Check the Apps Script execution log.' });
+    return true;
+  }
+
+  if (missing.length === 0) {
+    finishRun(r, 'done', null);
+    return true;
+  }
+
+  // A resume trigger is already in flight — give the server time to act on it
+  // before deciding whether the round made any progress.
+  if (r.pendingResume && r.resumePolls < CFG.resumeGracePolls) {
+    setStreamMsg(`Waiting for the server to return ${missing.length} requested school(s)…`);
+    return false;
+  }
+  r.pendingResume = false;
+
+  // Incomplete. Auto-resume while we still have rounds and are making progress.
+  const madeProgress = r.lastMissingCount < 0 || missing.length < r.lastMissingCount;
+  if (r.round < CFG.maxRounds && madeProgress) {
+    r.lastMissingCount = missing.length;
+    r.round++;
+    r.roundGateUntil = Date.now() + CFG.roundGateMs;
+    r.pendingResume = true;
+    r.resumePolls = 0;
+    r.storeAtResume = r.store.size;
+    r.polls = Math.max(0, r.polls - 40);   // give the new round some polling budget
+    logRun(r, `incomplete (${missing.length} missing) — auto-resuming, round ${r.round}`);
+    showProgress(Math.round((coveredCount(r) / r.expected.size) * 100),
+                 `${missing.length} school(s) still missing — auto-retrying…`);
+    setStreamMsg(`Round ${r.round}/${CFG.maxRounds} · re-requesting ${missing.length} missing school(s)`);
+    renderAll();
+    // Fire the resume trigger without blocking the poll loop.
+    triggerFetch(r, missing.map(m => m.emis));
+    return false;
+  }
+
+  finishRun(r, runHasData(r) ? 'partial' : 'error', {
+    title: `${missing.length} of ${r.expected.size} school(s) did not come back.`,
+    detail: `${coverageText(r)} after ${r.round} round(s). ` +
+            (madeProgress ? '' : 'The last retry returned the same set, so further retries were skipped. ') +
+            'The schools you did get are kept below and can be exported.',
+  });
+  return true;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  FINISH
+// ════════════════════════════════════════════════════════════════════════════
+function finishRun(r, outcome, failure) {
+  if (isStale(r)) return;
+  r.phase = outcome;
+  setBusy(false);
+  hideProgress();
+  hideStreamStatus();
+
+  const missing = missingList(r);
+  const secs = ((Date.now() - r.startedAt) / 1000).toFixed(1);
+  logRun(r, `finished: ${outcome} in ${secs}s — ${coverageText(r)}`);
+
+  if (outcome === 'error') {
+    showError((failure && failure.title) || 'Something went wrong.', (failure && failure.detail) || '');
+    if (r.store.size) renderAll();     // still show whatever arrived
+    else { $('tablesWrap').classList.remove('visible'); }
+    showCompleteness(r, 'bad',
+      `✕ ${coverageText(r)} · failed after ${secs}s`, false);
+    return;
+  }
+
+  renderAll();
+
+  if (outcome === 'done') {
+    hideError();
+    showCompleteness(r, 'ok',
+      `✔ ${coverageText(r)} · complete in ${secs}s` +
+      (r.serverSawRunId ? '' : ' · note: server did not echo the run id, so this result was matched by Markaz only'),
+      false);
+    toast(`${r.sel.markaz}: ${coverageText(r)} — complete.`);
+    return;
+  }
+
+  // partial
+  hideError();
+  showCompleteness(r, 'warn',
+    `⚠ ${coverageText(r)} · ${missing.length} missing after ${r.round} round(s) / ${secs}s. Partial data is shown and exportable.`,
+    true);
+  toast(`${r.sel.markaz}: incomplete — ${missing.length} school(s) missing.`, true);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════════════════════
+let sortState = { s: { col: 'status', asc: true }, t: { col: 'tStatus', asc: true } };
+
+function currentRows() {
+  if (!run) return [];
+  const rows = [...run.store.values()];
+  // Show the schools we are still waiting for, so gaps are visible, not silent.
+  if (run.phase === 'partial' || run.phase === 'error') rows.push(...missingRows(run));
+  return rows;
+}
+
+function sortRows(data, col, asc) {
   return [...data].sort((a, b) => {
-    let va = a[realCol], vb = b[realCol];
+    let va = a[col], vb = b[col];
     if (typeof va === 'string') va = va.toLowerCase();
     if (typeof vb === 'string') vb = vb.toLowerCase();
-    if (va === null || va === undefined) va = -Infinity;
-    if (vb === null || vb === undefined) vb = -Infinity;
+    const aNull = va === null || va === undefined || va === '';
+    const bNull = vb === null || vb === undefined || vb === '';
+    if (aNull && bNull) return 0;
+    if (aNull) return 1;                 // blanks always sink
+    if (bNull) return -1;
     if (va < vb) return asc ? -1 : 1;
     if (va > vb) return asc ? 1 : -1;
-    return 0;
+    return String(a.name).localeCompare(String(b.name));   // stable tiebreak
   });
 }
 
-function statusPill(status, error) {
-  if (error || status === -1)
-    return `<span class="status-pill status-error"><span class="dot"></span>Error</span>`;
-  if (status === 1)
-    return `<span class="status-pill status-marked"><span class="dot"></span>Marked</span>`;
-  return `<span class="status-pill status-unmarked"><span class="dot"></span>Not Marked</span>`;
+function statusPill(status) {
+  if (status === 1)  return `<span class="status-pill status-marked"><span class="dot"></span>Marked</span>`;
+  if (status === 0)  return `<span class="status-pill status-unmarked"><span class="dot"></span>Not Marked</span>`;
+  if (status === -1) return `<span class="status-pill status-error"><span class="dot"></span>Error</span>`;
+  return `<span class="status-pill status-unknown"><span class="dot"></span>Missing</span>`;
 }
 
-function renderTableBody(tbodyId, objs, sortKey, tableKey) {
-  const tbody = document.getElementById(tbodyId);
-  const col   = sortState[tableKey].col;
-  const asc   = sortState[tableKey].asc;
-  const sorted = sortData(objs, col, asc);
+function renderTableBody(tbodyId, rows, tableKey, map) {
+  const tbody = $(tbodyId);
+  const { col, asc } = sortState[tableKey];
+  const sorted = sortRows(rows.map(r => ({ ...r, ...map(r) })), col, asc);
 
-  // Update sort arrows
   const table = tbody.closest('table');
   table.querySelectorAll('th').forEach(th => {
     th.classList.toggle('sorted', th.dataset.col === col);
     const arrow = th.querySelector('.sort-arrow');
-    if (th.dataset.col === col) arrow.textContent = asc ? ' ↑' : ' ↓';
-    else arrow.textContent = ' ↕';
+    if (arrow) arrow.textContent = th.dataset.col === col ? (asc ? ' ↑' : ' ↓') : ' ↕';
   });
 
-  const isTeacher = tableKey === 't';
-
   tbody.innerHTML = sorted.map(r => {
-    const pres   = isTeacher ? r.tPresent : r.present;
-    const abs    = isTeacher ? r.tAbsent  : r.absent;
-    const mar    = isTeacher ? r.tMarked  : r.marked;
-    const status = isTeacher ? r.tStatus  : r.status;
-    return `<tr>
-      <td class="school-name">${r.name}</td>
-      <td>${r.level}</td>
-      <td>${r.gender}</td>
-      <td class="num present">${pres !== null && pres !== undefined ? Number(pres).toLocaleString() : '—'}</td>
-      <td class="num absent">${abs  !== null && abs  !== undefined ? Number(abs).toLocaleString()  : '—'}</td>
-      <td class="num total">${mar   !== null && mar  !== undefined ? Number(mar).toLocaleString()  : '—'}</td>
-      <td>${statusPill(status, r.error)}</td>
+    const st = r._status;
+    return `<tr${st === -2 ? ' class="missing-row"' : ''}>
+      <td class="school-name">${esc(r.name)}</td>
+      <td class="emis">${esc(r.emis || '—')}</td>
+      <td>${esc(r.level)}</td>
+      <td>${esc(r.gender)}</td>
+      <td class="num present">${fmtInt(r._present)}</td>
+      <td class="num absent">${fmtInt(r._absent)}</td>
+      <td class="num total">${fmtInt(r._marked)}</td>
+      <td>${statusPill(st)}</td>
     </tr>`;
   }).join('');
 
-  const badge = tbodyId === 'studentsTbody' ? 'sBadge' : 'tBadge';
-  document.getElementById(badge).textContent = `${sorted.length} school${sorted.length !== 1 ? 's' : ''}`;
+  const badge = $(tbodyId === 'studentsTbody' ? 'sBadge' : 'tBadge');
+  const real = sorted.filter(r => r._status !== -2).length;
+  badge.textContent = sorted.length === real
+    ? `${real} school${real !== 1 ? 's' : ''}`
+    : `${real} of ${sorted.length} schools`;
 }
 
 function renderTables() {
-  const objs = lastRows.map(gasRowToObj);
-  renderTableBody('studentsTbody', objs, 'status', 's');
-  renderTableBody('teachersTbody', objs, 'tStatus', 't');
+  const rows = currentRows();
+  renderTableBody('studentsTbody', rows, 's', r => ({
+    _present: r.present, _absent: r.absent, _marked: r.marked, _status: r.status,
+  }));
+  renderTableBody('teachersTbody', rows, 't', r => ({
+    _present: r.tPresent, _absent: r.tAbsent, _marked: r.tMarked, _status: r.tStatus,
+  }));
 }
 
-// Sortable headers
+function renderCards() {
+  const rows = run ? [...run.store.values()] : [];
+  let sP = 0, sA = 0, sMarked = 0, sNot = 0;
+  let tP = 0, tA = 0, tMarked = 0, tNot = 0;
+
+  for (const r of rows) {
+    if (r.state === 'error') continue;
+    sP += r.present || 0; sA += r.absent || 0;
+    tP += r.tPresent || 0; tA += r.tAbsent || 0;
+    if ((r.marked || 0) > 0) sMarked++; else sNot++;
+    if ((r.tMarked || 0) > 0) tMarked++; else tNot++;
+  }
+
+  const n = rows.length;
+  const expected = run ? run.expected.size : 0;
+
+  $('cSchools').textContent = expected && n !== expected ? `${n} / ${expected}` : String(n);
+  $('cSchoolsSub').textContent = expected && n !== expected ? `${expected - n} still missing` : 'all received';
+
+  $('cSPresent').textContent = sP.toLocaleString();
+  $('cSAbsent').textContent  = `Absent: ${sA.toLocaleString()}`;
+  const sBase = sMarked + sNot;
+  const sPct = sBase ? Math.round(sMarked / sBase * 100) : 0;
+  $('cSMarked').textContent   = `${sMarked} / ${sBase}`;
+  $('cSMarked').className     = `card-value ${sPct === 100 ? 'green' : sPct > 50 ? 'blue' : 'red'}`;
+  $('cSUnmarked').textContent = `Not marked: ${sNot}`;
+
+  $('cTPresent').textContent = tP.toLocaleString();
+  $('cTAbsent').textContent  = `Absent: ${tA.toLocaleString()}`;
+  const tBase = tMarked + tNot;
+  const tPct = tBase ? Math.round(tMarked / tBase * 100) : 0;
+  $('cTMarked').textContent   = `${tMarked} / ${tBase}`;
+  $('cTMarked').className     = `card-value ${tPct === 100 ? 'green' : tPct > 50 ? 'blue' : 'red'}`;
+  $('cTUnmarked').textContent = `Not marked: ${tNot}`;
+}
+
+function renderAll() {
+  if (!run || !run.store.size) {
+    if (!run || (!run.store.size && run.phase !== 'partial' && run.phase !== 'error')) return;
+  }
+  renderTables();
+  renderCards();
+  $('tablesWrap').classList.add('visible');
+  $('emptyState').classList.remove('visible');
+  document.querySelectorAll('.card').forEach(c => c.classList.add('visible'));
+  $('btnExport').disabled = run.store.size === 0;
+}
+
+// ── Sortable headers (each table has its own column set) ─────
 document.querySelectorAll('th[data-col]').forEach(th => {
   th.addEventListener('click', () => {
-    const col = th.dataset.col;
-    const key = th.dataset.table;
+    const key = th.dataset.table, col = th.dataset.col;
     if (sortState[key].col === col) sortState[key].asc = !sortState[key].asc;
     else { sortState[key].col = col; sortState[key].asc = true; }
     renderTables();
   });
 });
 
-// ── Summary Cards ────────────────────────────────────────────
-function renderCards() {
-  let sPresent=0, sAbsent=0, sMarked=0, sUnmarked=0;
-  let tPresent=0, tAbsent=0, tMarked=0, tUnmarked=0;
+// ════════════════════════════════════════════════════════════════════════════
+//  EXPORTS
+// ════════════════════════════════════════════════════════════════════════════
+function contextCols() {
+  const s = run ? run.sel : {};
+  return {
+    'District': s.district || selectVal('selDistrict'),
+    'Wing':     s.wing || selectVal('selWing'),
+    'Tehsil':   s.tehsil || selectVal('selTehsil'),
+    'Markaz':   s.markaz || selectVal('selMarkaz'),
+  };
+}
 
-  lastRows.forEach(r => {
-    if (r.status !== 'error' && r.status !== undefined) {
-      sPresent += r.sPresent || 0;
-      sAbsent  += r.sAbsent  || 0;
-      if ((r.sMarked || 0) > 0) sMarked++; else sUnmarked++;
-      tPresent += r.tPresent || 0;
-      tAbsent  += r.tAbsent  || 0;
-      if ((r.tMarked || 0) > 0) tMarked++; else tUnmarked++;
+function baseFileName(kind) {
+  const m = (run && run.sel.markaz) || selectVal('selMarkaz') || 'all';
+  return `pesrp_${slug(m)}_${kind}_${stamp()}.csv`;
+}
+
+const STATUS_TEXT = { 1: 'Marked', 0: 'Not Marked', '-1': 'Error', '-2': 'Missing / not returned' };
+const statusText = s => STATUS_TEXT[String(s)] || 'Unknown';
+
+function sortedFor(tableKey, map) {
+  const { col, asc } = sortState[tableKey];
+  return sortRows(currentRows().map(r => ({ ...r, ...map(r) })), col, asc);
+}
+
+function exportReport(kind) {
+  if (!run || !run.store.size) { toast('Nothing to export yet — run a fetch first.', true); return; }
+  const ctx = contextCols();
+  const head = k => Object.assign({ 'EMIS': null, 'School Name': null, 'Level': null, 'Gender': null }, ctx);
+
+  let headers, rows, fname;
+
+  if (kind === 'students') {
+    headers = ['EMIS', 'School Name', 'District', 'Wing', 'Tehsil', 'Markaz', 'Level', 'Gender',
+               'Students Present', 'Students Absent', 'Students Total Marked', 'Status'];
+    rows = sortedFor('s', r => ({ _p: r.present, _a: r.absent, _m: r.marked, _st: r.status }))
+      .map(r => Object.assign({
+        'EMIS': r.emis, 'School Name': r.name, 'Level': r.level, 'Gender': r.gender,
+        'Students Present': r._p, 'Students Absent': r._a,
+        'Students Total Marked': r._m, 'Status': statusText(r._st),
+      }, ctx));
+    fname = baseFileName('students');
+
+  } else if (kind === 'teachers') {
+    headers = ['EMIS', 'School Name', 'District', 'Wing', 'Tehsil', 'Markaz', 'Level', 'Gender',
+               'Teachers Present', 'Teachers Absent', 'Teachers Total Marked', 'Status'];
+    rows = sortedFor('t', r => ({ _p: r.tPresent, _a: r.tAbsent, _m: r.tMarked, _st: r.tStatus }))
+      .map(r => Object.assign({
+        'EMIS': r.emis, 'School Name': r.name, 'Level': r.level, 'Gender': r.gender,
+        'Teachers Present': r._p, 'Teachers Absent': r._a,
+        'Teachers Total Marked': r._m, 'Status': statusText(r._st),
+      }, ctx));
+    fname = baseFileName('teachers');
+
+  } else if (kind === 'combined') {
+    headers = ['EMIS', 'School Name', 'District', 'Wing', 'Tehsil', 'Markaz', 'Level', 'Gender',
+               'Students Present', 'Students Absent', 'Students Total Marked', 'Students Status',
+               'Teachers Present', 'Teachers Absent', 'Teachers Total Marked', 'Teachers Status',
+               'Notes'];
+    rows = currentRows().map(r => Object.assign({
+      'EMIS': r.emis, 'School Name': r.name, 'Level': r.level, 'Gender': r.gender,
+      'Students Present': r.present, 'Students Absent': r.absent, 'Students Total Marked': r.marked,
+      'Students Status': statusText(r.status),
+      'Teachers Present': r.tPresent, 'Teachers Absent': r.tAbsent, 'Teachers Total Marked': r.tMarked,
+      'Teachers Status': statusText(r.tStatus),
+      'Notes': r.note,
+    }, ctx));
+    fname = baseFileName('combined');
+
+  } else if (kind === 'unmarked') {
+    headers = ['EMIS', 'School Name', 'District', 'Wing', 'Tehsil', 'Markaz', 'Level', 'Gender',
+               'Students Not Marked', 'Teachers Not Marked', 'Students Marked', 'Teachers Marked'];
+    rows = currentRows()
+      .filter(r => r.status !== 1 || r.tStatus !== 1)
+      .map(r => Object.assign({
+        'EMIS': r.emis, 'School Name': r.name, 'Level': r.level, 'Gender': r.gender,
+        'Students Not Marked': r.status !== 1 ? 'YES' : '',
+        'Teachers Not Marked': r.tStatus !== 1 ? 'YES' : '',
+        'Students Marked': r.marked, 'Teachers Marked': r.tMarked,
+      }, ctx));
+    fname = baseFileName('unmarked');
+
+  } else if (kind === 'missing') {
+    const miss = missingList(run);
+    headers = ['EMIS', 'School Name', 'District', 'Wing', 'Tehsil', 'Markaz', 'Level', 'Gender', 'Reason'];
+    rows = miss.map(m => Object.assign({
+      'EMIS': m.emis, 'School Name': m.name, 'Level': m.level, 'Gender': m.gender,
+      'Reason': 'Not returned by server',
+    }, ctx));
+    fname = baseFileName('missing');
+
+  } else if (kind === 'summary') {
+    const rs = [...run.store.values()];
+    let sP = 0, sA = 0, sMk = 0, sNo = 0, tP = 0, tA = 0, tMk = 0, tNo = 0, errs = 0;
+    for (const r of rs) {
+      if (r.state === 'error') { errs++; continue; }
+      sP += r.present || 0; sA += r.absent || 0;
+      tP += r.tPresent || 0; tA += r.tAbsent || 0;
+      if ((r.marked || 0) > 0) sMk++; else sNo++;
+      if ((r.tMarked || 0) > 0) tMk++; else tNo++;
     }
-  });
+    headers = ['Metric', 'Value'];
+    rows = [
+      { 'Metric': 'Report date',        'Value': todayStr() },
+      { 'Metric': 'Generated at',       'Value': new Date().toISOString() },
+      { 'Metric': 'District',           'Value': ctx['District'] },
+      { 'Metric': 'Wing',               'Value': ctx['Wing'] },
+      { 'Metric': 'Tehsil',             'Value': ctx['Tehsil'] },
+      { 'Metric': 'Markaz',             'Value': ctx['Markaz'] },
+      { 'Metric': 'Run id',             'Value': run.id },
+      { 'Metric': 'Fetch state',        'Value': run.phase },
+      { 'Metric': 'Rounds used',        'Value': run.round },
+      { 'Metric': 'Expected schools',   'Value': run.expected.size || 'unknown' },
+      { 'Metric': 'Schools received',   'Value': rs.length },
+      { 'Metric': 'Schools missing',    'Value': missingList(run).length },
+      { 'Metric': 'Coverage %',         'Value': run.expected.size ? Math.round(rs.length / run.expected.size * 100) : '' },
+      { 'Metric': 'Schools with error', 'Value': errs },
+      { 'Metric': 'Students present',   'Value': sP },
+      { 'Metric': 'Students absent',    'Value': sA },
+      { 'Metric': 'Students marked schools',    'Value': sMk },
+      { 'Metric': 'Students not-marked schools','Value': sNo },
+      { 'Metric': 'Teachers present',   'Value': tP },
+      { 'Metric': 'Teachers absent',    'Value': tA },
+      { 'Metric': 'Teachers marked schools',    'Value': tMk },
+      { 'Metric': 'Teachers not-marked schools','Value': tNo },
+    ];
+    fname = baseFileName('summary');
 
-  const n = lastRows.length;
-  document.getElementById('cSchools').textContent  = n;
-  document.getElementById('cSPresent').textContent = sPresent.toLocaleString();
-  document.getElementById('cSAbsent').textContent  = `Absent: ${sAbsent.toLocaleString()}`;
-  const sPct = n ? Math.round(sMarked / n * 100) : 0;
-  document.getElementById('cSMarked').textContent  = `${sMarked} / ${n}`;
-  document.getElementById('cSMarked').className    = `card-value ${sPct===100?'green':sPct>50?'blue':'red'}`;
-  document.getElementById('cSUnmarked').textContent= `Not marked: ${sUnmarked}`;
+  } else {
+    toast('Unknown report.', true); return;
+  }
 
-  document.getElementById('cTPresent').textContent = tPresent.toLocaleString();
-  document.getElementById('cTAbsent').textContent  = `Absent: ${tAbsent.toLocaleString()}`;
-  const tPct = n ? Math.round(tMarked / n * 100) : 0;
-  document.getElementById('cTMarked').textContent  = `${tMarked} / ${n}`;
-  document.getElementById('cTMarked').className    = `card-value ${tPct===100?'green':tPct>50?'blue':'red'}`;
-  document.getElementById('cTUnmarked').textContent= `Not marked: ${tUnmarked}`;
+  if (!rows.length && kind !== 'summary') {
+    toast(`No rows for the "${kind}" report.`, true);
+    return;
+  }
+  downloadCSV(fname, buildCSV(headers, rows));
+  toast(`Exported ${rows.length} row(s) → ${fname}`);
 }
 
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 //  UI HELPERS
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 function resetUI() {
-  document.getElementById('emptyState').classList.remove('visible');
-  document.getElementById('errorState').classList.remove('visible');
-  document.getElementById('tablesWrap').classList.remove('visible');
+  $('emptyState').classList.remove('visible');
+  $('errorState').classList.remove('visible');
+  $('tablesWrap').classList.remove('visible');
   document.querySelectorAll('.card').forEach(c => c.classList.remove('visible'));
-  lastRows = [];
+  $('studentsTbody').innerHTML = '';
+  $('teachersTbody').innerHTML = '';
+  hideCompleteness();
 }
 
-function setFetchingUI(on) {
-  document.getElementById('btnFetch').disabled = on;
-  document.getElementById('selMarkaz').disabled = on;
+function setBusy(on) {
+  $('btnFetch').disabled = on || !selectVal('selMarkaz');
+  $('btnFetch').textContent = on ? 'Fetching…' : 'Fetch Attendance';
+  ['selDistrict', 'selWing', 'selTehsil', 'selMarkaz'].forEach(id => { $(id).disabled = on; });
+  if (!on) onMarkazChange();
+  $('btnCancel').classList.toggle('visible', on);
+  if (on) $('btnExport').disabled = true;
 }
 
-function showProgress(pct, fetched, msg) {
-  const pw = document.getElementById('progressWrap');
-  pw.classList.add('visible');
-  document.getElementById('progressText').textContent = msg;
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('streamStatus').classList.add('visible');
+function showProgress(pct, msg) {
+  $('progressWrap').classList.add('visible');
+  $('progressText').textContent = msg;
+  $('progressFill').style.width = Math.max(0, Math.min(100, pct || 0)) + '%';
 }
 
-function hideProgress() {
-  document.getElementById('progressWrap').classList.remove('visible');
-}
-
-function hideStreamStatus() {
-  document.getElementById('streamStatus').classList.remove('visible');
-}
+function hideProgress() { $('progressWrap').classList.remove('visible'); }
 
 function setStreamMsg(msg) {
-  document.getElementById('streamMsg').textContent = msg;
-  document.getElementById('streamStatus').classList.add('visible');
+  $('streamMsg').textContent = msg;
+  $('streamStatus').classList.add('visible');
 }
 
-function showError(msg) {
-  document.getElementById('errorMsg').textContent = msg;
-  document.getElementById('errorState').classList.add('visible');
-  document.getElementById('emptyState').classList.remove('visible');
+function hideStreamStatus() { $('streamStatus').classList.remove('visible'); }
+
+function showCompleteness(r, tone, msg, withRetry) {
+  const bar = $('completenessBar');
+  bar.className = `completeness visible ${tone}`;
+  $('completenessMsg').textContent = msg;
+  const btn = $('btnRetryMissing');
+  const n = missingList(r).length;
+  btn.style.display = withRetry && n ? 'inline-block' : 'none';
+  btn.textContent = `Retry missing (${n})`;
+}
+
+function hideCompleteness() { $('completenessBar').className = 'completeness'; }
+
+function showError(msg, detail) {
+  $('errorMsg').textContent = msg;
+  $('errorDetail').textContent = detail || '';
+  $('errorState').classList.add('visible');
+  $('emptyState').classList.remove('visible');
   hideProgress();
   hideStreamStatus();
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+function hideError() { $('errorState').classList.remove('visible'); }
 
-// ════════════════════════════════════════════════════════════
-//  INIT: Load CSV for school list
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+//  WIRING
+// ════════════════════════════════════════════════════════════════════════════
+$('themeToggle').addEventListener('click', function () {
+  document.body.classList.toggle('light-theme');
+  const light = document.body.classList.contains('light-theme');
+  this.innerHTML = light ? '🌙 Dark' : '☀️ Light';
+  saveState();
+});
+
+$('selDistrict').addEventListener('change', () => { onDistrictChange(); saveState(); });
+$('selWing').addEventListener('change',     () => { onWingChange();    saveState(); });
+$('selTehsil').addEventListener('change',   () => { onTehsilChange();  saveState(); });
+$('selMarkaz').addEventListener('change',   () => { onMarkazChange();  saveState(); });
+
+$('btnFetch').addEventListener('click', () => { startFetch(); });
+$('btnCancel').addEventListener('click', () => { cancelRun(false); });
+$('btnRetryMissing').addEventListener('click', () => { retryMissing(); });
+
+$('btnExport').addEventListener('click', e => {
+  e.stopPropagation();
+  $('exportMenu').classList.toggle('visible');
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-wrap')) $('exportMenu').classList.remove('visible');
+});
+$('exportMenu').querySelectorAll('button[data-report]').forEach(b => {
+  b.addEventListener('click', () => {
+    $('exportMenu').classList.remove('visible');
+    exportReport(b.dataset.report);
+  });
+});
+document.querySelectorAll('[data-quickexport]').forEach(b => {
+  b.addEventListener('click', () => exportReport(b.dataset.quickexport));
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════════════════
+async function loadMasterList() {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= CFG.csvRetries; attempt++) {
+    try {
+      const sep = CSV_URL.includes('?') ? '&' : '?';
+      const resp = await fetch(`${CSV_URL}${sep}_=${Date.now()}`, { cache: 'no-store' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const text = await resp.text();
+      const rows = parseCSV(text);
+      if (!rows.length) throw new Error('the sheet returned no rows');
+      allRows = rows;
+      masterLoaded = true;
+      return true;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < CFG.csvRetries) await sleep(800 * attempt);
+    }
+  }
+  showError('Failed to load the school list from Google Sheets.',
+            `${lastErr && lastErr.message ? lastErr.message : lastErr} — the district/tehsil/markaz selectors and the "did we get every school?" check both need this list.`);
+  return false;
+}
+
 (async function init() {
-  try {
-    const resp = await fetch(CSV_URL);
-    const text = await resp.text();
-    allRows    = parseCSV(text);
-    const districts = unique(allRows.map(r => r['District']));
-    fillSelect(document.getElementById('selDistrict'), districts, '— Select District —');
-  } catch (e) {
-    showError('Failed to load school list from Google Sheets. Check CSV URL or network.');
+  $('headerDate').textContent = todayStr();
+
+  const saved = loadState();
+  if (saved.light) {
+    document.body.classList.add('light-theme');
+    $('themeToggle').innerHTML = '🌙 Dark';
+  }
+
+  const ok = await loadMasterList();
+  if (!ok) return;
+
+  fillSelect($('selDistrict'), unique(allRows.map(r => r['District'])), '— Select District —');
+
+  if (saved.district && setSelectValue($('selDistrict'), saved.district)) {
+    onDistrictChange();
+    if (saved.wing && setSelectValue($('selWing'), saved.wing)) {
+      onWingChange();
+      if (saved.tehsil && setSelectValue($('selTehsil'), saved.tehsil)) {
+        onTehsilChange();
+        if (saved.markaz && setSelectValue($('selMarkaz'), saved.markaz)) onMarkazChange();
+      }
+    }
   }
 })();
+
+// ── Test/diagnostic surface (harmless in production) ──────────
+window.__SIS__ = {
+  get run() { return run; },
+  get allRows() { return allRows; },
+  get sortState() { return sortState; },
+  CFG,
+  parseCSV, buildCSV, csvEscape, normalizeRow, esc, num,
+  missingList, coveredCount, coverageText, currentRows,
+  startFetch, retryMissing, cancelRun, exportReport,
+  masterRowsFor,
+};
 </script>
 </body>
 </html>
