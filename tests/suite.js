@@ -452,6 +452,12 @@ section('19. "Cross-Origin Request Blocked" on fetch — JSONP fallback');
   ok(env.jsonpRequests.every(r => r.callback && r.callback.indexOf('__sisJsonp') === 0),
      'every fallback request carries a callback name');
   ok(!env.$('errorState').classList.contains('visible'), 'no error panel shown');
+
+  const trigger = env.gasRequests.find(r => r.action === 'fetch');
+  ok(trigger && trigger.slim === '1',
+     'the trigger asks for a slim payload — rows are not needed to start a run');
+  const poll = env.gasRequests.find(r => r.action === 'status');
+  ok(poll && !poll.slim, 'status polls still ask for the rows, so the table fills');
   eq(env.consoleErrors.length, 0, `no console errors (${env.consoleErrors.join(' | ') || 'clean'})`);
   env.window.close();
 }
@@ -505,7 +511,31 @@ section('21. fetch blocked and the deployed server has no ?callback= support');
   env.window.close();
 }
 
-// ── 22. No console errors ─────────────────────────────────────────────────
+// ── 22. Small calls fine, heavy response blocked → verdict names the run ──
+section('22. Health call OK over the fallback, the heavy response blocked');
+{
+  const env = makeEnv({
+    master: makeMaster(6),
+    corsBlocked: true,                       // plain fetch is blocked for everything
+    handler: (req) => {
+      if (req.action === 'health') return { version: '3.0.0', time: 'now' };
+      if (req.action === 'fetch')  return { started: true, runId: req.runId };
+      return { __throw: 'network' };         // the status response never arrives either
+    },
+  });
+  await bootMaster(env);
+  await selectPath(env, SEL);
+
+  await env.S.startFetch();
+  const detail = env.$('errorDetail').textContent;
+  ok(/health call/i.test(detail),
+     'verdict separates "deployment unreachable" from "this response is the problem"');
+  ok(/Executions/.test(detail), 'and points at the Apps Script execution log');
+  ok(/secondary-wing/i.test(detail), 'and says why secondary-wing Markazes are the ones that hit it');
+  env.window.close();
+}
+
+// ── 23. No console errors ─────────────────────────────────────────────────
 section('23. Page health');
 {
   const all = schools(4);

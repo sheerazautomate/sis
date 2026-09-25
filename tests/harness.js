@@ -46,6 +46,12 @@ function schoolRow(s, over = {}) {
   }, over);
 }
 
+/** Mirror the server's slim=1 behaviour: rows are dropped, counters kept. */
+function slimmed(req, out) {
+  if (!out || req.slim !== '1' || !Array.isArray(out.rows)) return out;
+  return Object.assign({}, out, { rows: [], rowsOmitted: true });
+}
+
 // ── environment ─────────────────────────────────────────────────────────────
 /**
  * @param {object} opts
@@ -132,11 +138,14 @@ function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked 
             markaz: u.searchParams.get('markaz'),
             runId:  u.searchParams.get('runId'),
             round:  u.searchParams.get('round'),
+            slim:   u.searchParams.get('slim'),
             emis:   (u.searchParams.get('emis') || '').split(',').filter(Boolean),
           };
           gasRequests.push(req);
 
           // A CORS block: the browser never lets the page read the response.
+          // (The real server answers slim=1 by omitting `rows`; honour it so the
+          // tests see the same contract.)
           if (corsBlocked) throw new TypeError('Failed to fetch');
 
           const out = await handler(req, gasRequests.length);
@@ -148,7 +157,7 @@ function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked 
           if (out.__html !== undefined) return resp({ body: out.__html, status: out.__status || 200 });
           if (out.__status) return resp({ body: out.__body || '', status: out.__status });
           if (out.__raw !== undefined) return resp({ body: out.__raw });
-          return resp({ body: JSON.stringify(out) });
+          return resp({ body: JSON.stringify(slimmed(req, out)) });
         }
 
         return resp({ body: '', status: 404 });
@@ -171,6 +180,7 @@ function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked 
           markaz:   u.searchParams.get('markaz'),
           runId:    u.searchParams.get('runId'),
           round:    u.searchParams.get('round'),
+          slim:     u.searchParams.get('slim'),
           emis:     (u.searchParams.get('emis') || '').split(',').filter(Boolean),
           callback: cb,
         };
@@ -192,7 +202,7 @@ function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked 
               window.dispatchEvent(ev);
               return;
             }
-            if (typeof window[cb] === 'function') window[cb](out);
+            if (typeof window[cb] === 'function') window[cb](slimmed(req, out));
           })
           .catch(() => node.dispatchEvent(new window.Event('error')));
 

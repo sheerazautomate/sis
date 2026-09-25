@@ -907,7 +907,7 @@ function gasJsonp(params, timeoutMs) {
 }
 
 /** Both transports failed: describe what the browser blocked, not just "failed". */
-function combineBlocked(fetchRes, jsonpRes) {
+function combineBlocked(fetchRes, jsonpRes, probe) {
   const timedOut = (fetchRes && fetchRes.kind === 'timeout') || (jsonpRes && jsonpRes.kind === 'timeout');
   return {
     ok: false,
@@ -916,7 +916,17 @@ function combineBlocked(fetchRes, jsonpRes) {
     url: (fetchRes && fetchRes.url) || gasLastUrl,
     error: (fetchRes && fetchRes.error) || '',
     jsonpError: jsonpRes ? (jsonpRes.error || jsonpRes.kind) : '',
+    probeOk: !!(probe && probe.ok),   // does a TINY call come back over the fallback?
   };
+}
+
+// One tiny CORS-free health call per session, only when something failed: it
+// separates "the deployment cannot be reached at all" from "this particular
+// response was the problem", which are two very different fixes.
+let jsonpProbe = null;
+async function jsonpHealthProbe() {
+  if (jsonpProbe === null) jsonpProbe = await gasJsonp({ action: 'health', _: Date.now() }, CFG.probeTimeoutMs);
+  return jsonpProbe;
 }
 
 function noteCorsFallback(params, url) {
@@ -933,7 +943,7 @@ async function gasGet(params, timeoutMs) {
     const f = await gasFetch(params, timeoutMs);          // the block may have been transient
     if (f.ok) { gasTransport = 'auto'; gasCorsBlocks = 0; return f; }
     if (!f.blocked && !j.blocked) return f;               // a real answer we can explain
-    return combineBlocked(f, j);
+    return combineBlocked(f, j, await jsonpHealthProbe());
   }
 
   const res = await gasFetch(params, timeoutMs);
@@ -945,7 +955,7 @@ async function gasGet(params, timeoutMs) {
     if (gasTransport !== 'jsonp') { noteCorsFallback(params, res.url); gasTransport = 'jsonp'; }
     return j;
   }
-  return combineBlocked(res, j);
+  return combineBlocked(res, j, await jsonpHealthProbe());
 }
 
 function describeGasFailure(res) {
@@ -967,13 +977,20 @@ function describeGasFailure(res) {
         title: 'The browser blocked the Apps Script response (CORS).',
         detail: `Request: ${res.url || GAS_URL} — the request left the browser but no readable response came back`
           + (res.jsonpError ? `, and the CORS-free retry (JSONP) failed too: ${res.jsonpError}.` : '.')
-          + ' Usual causes, in this order:'
-          + ' (1) the Apps Script web app is not deployed with "Who has access: Anyone";'
-          + ' (2) the script run failed — an exception, the 6-minute execution kill or a quota stop makes'
-          + ' Google answer with an HTML error page that carries no CORS header, which the browser reports'
-          + ' as CORS (open Apps Script → Executions and look at the failing run);'
-          + ' (3) the deployed server predates server/Code.gs in this repo, which adds the ?callback= support'
-          + ' the CORS-free retry needs.',
+          + (res.probeOk
+              ? ' A small health call to the same deployment DOES come back over the CORS-free channel, so the'
+                + ' deployment itself is reachable — this response is the problem. That is the signature of a run'
+                + ' that failed or was killed (uncaught exception, the 6-minute execution kill, a quota stop):'
+                + ' Google then answers with an HTML error page that carries no CORS header, which the browser'
+                + ' reports as CORS. Open Apps Script → Executions and look at the failing run — and note that a'
+                + ' secondary-wing Markaz is 100+ schools, so its responses are the big ones.'
+              : ' Usual causes, in this order:'
+                + ' (1) the Apps Script web app is not deployed with "Who has access: Anyone";'
+                + ' (2) the script run failed — an exception, the 6-minute execution kill or a quota stop makes'
+                + ' Google answer with an HTML error page that carries no CORS header, which the browser reports'
+                + ' as CORS (open Apps Script → Executions and look at the failing run);'
+                + ' (3) the deployed server predates server/Code.gs in this repo, which adds the ?callback= support'
+                + ' the CORS-free retry needs.'),
       };
     case 'http':
       return { title: `Apps Script returned HTTP ${res.status}.`,
@@ -1004,7 +1021,10 @@ function describeGasFailure(res) {
 //  Returns 'accepted' | 'background' | 'failed'
 // ════════════════════════════════════════════════════════════════════════════
 async function triggerFetch(r, emisList) {
-  const params = { action: 'fetch', markaz: r.sel.markaz, runId: r.id, round: r.round };
+  // slim=1: starting the run does not need the rows back. The trigger is the
+  // longest, heaviest call, and the big responses are the ones Google has been
+  // seen to answer without a CORS header — so ask for no rows at all here.
+  const params = { action: 'fetch', markaz: r.sel.markaz, runId: r.id, round: r.round, slim: 1 };
   if (emisList && emisList.length) params.emis = emisList.join(',');
 
   for (let attempt = 1; attempt <= CFG.triggerRetries; attempt++) {
@@ -1253,7 +1273,7 @@ async function pollOnce(r) {
       r.stall = 0;
       logRun(r, 'progress stalled — poking the server to continue');
       setStreamMsg('No progress for a while — nudging the server to continue…');
-      gasGet({ action: 'fetchChunk', markaz: r.sel.markaz, runId: r.id }, CFG.pollTimeoutMs);
+      gasGet({ action: 'fetchChunk', markaz: r.sel.markaz, runId: r.id, slim: 1 }, CFG.pollTimeoutMs);
     }
     renderAll();
     return false;
