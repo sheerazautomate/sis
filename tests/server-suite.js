@@ -341,6 +341,35 @@ const outSheet = (gas) => {
     eq(gas.ss[OUT_ID].tab('AdminConfig').getLastRow(), 2, 'no duplicate month row created');
   }
 
+  // ── 16. JSONP channel for the dashboard's CORS-free fallback ────────────
+  section('16. ?callback= returns executable JSONP (CORS-free fallback)');
+  {
+    const { gas } = setup(3);
+
+    const plain = gas.callRaw({ action: 'health' });
+    eq(plain[0], '{', 'without ?callback= the body stays plain JSON');
+
+    const wrapped = gas.callRaw({ action: 'health', callback: 'myCb' });
+    ok(/^myCb\(\{/.test(wrapped), `body is wrapped for the script tag (${wrapped})`);
+    ok(/\);\s*$/.test(wrapped), 'and terminated so the script tag executes it');
+    eq(JSON.parse(wrapped.replace(/^myCb\(/, '').replace(/\);\s*$/, '')).version, gas.api.SCRIPT_VERSION,
+       'the wrapped payload is the same JSON the fetch path gets');
+    eq(gas.getLastMime(), 'application/javascript',
+       'MIME is JavaScript — browsers refuse to execute a JSON-MIME script response (ORB)');
+
+    // The fetch action must work over JSONP too, not just health.
+    const fetchJsonp = gas.callRaw({ action: 'fetch', markaz: MARKAZ, runId: 'R16', callback: 'cb2' });
+    ok(/^cb2\(/.test(fetchJsonp), 'fetch action also answers in JSONP form');
+    ok(gas.getLastMime() === 'application/javascript', 'and keeps the JavaScript MIME');
+
+    // Backwards compatible: the old client, with no callback, is unaffected.
+    eq(gas.call({ action: 'health' }).version, gas.api.SCRIPT_VERSION, 'plain JSON still works');
+
+    // A hostile callback name must never be echoed into the response body.
+    const evil = gas.callRaw({ action: 'health', callback: 'alert(1)//' });
+    eq(evil[0], '{', 'an invalid callback name is ignored, not injected');
+  }
+
   console.log('\n' + '═'.repeat(68));
   if (fail) { console.log(`\x1b[31m${fail} FAILED\x1b[0m, ${pass} passed`); failures.forEach(f => console.log('  - ' + f)); process.exit(1); }
   console.log(`\x1b[32mALL ${pass} CHECKS PASSED\x1b[0m`);

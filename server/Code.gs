@@ -99,12 +99,25 @@ const NUM_MONTHLY_COLS = 14;
 // ════════════════════════════════════════════════════════════════════
 //  ROUTER
 // ════════════════════════════════════════════════════════════════════
+/**
+ * JSONP channel. The dashboard sends `?callback=fn` when the browser refuses
+ * to hand it a CORS response ("Cross-Origin Request Blocked" — an HTML error
+ * page from a failed/killed execution, a quota stop, or a large response that
+ * comes back without `Access-Control-Allow-Origin`). A <script> tag is not
+ * subject to CORS, so the same payload arrives as `fn({...});` instead.
+ */
+let JSONP_CALLBACK = "";
+
 function doGet(e) {
   const p      = (e && e.parameter) || {};
   const action = (p.action || "status").toLowerCase();
   const markaz = (p.markaz || "").trim();
   const month  = (p.month  || "").trim();
   const runId  = (p.runId  || "").trim();
+
+  // Only a plain JS identifier / dotted path is accepted — never injected raw.
+  const asked = String(p.callback || p.cb || "").trim();
+  JSONP_CALLBACK = /^[A-Za-z_$][A-Za-z0-9_$.]{0,63}$/.test(asked) ? asked : "";
 
   if (action === "health") return jsonOut({ version: SCRIPT_VERSION, time: new Date().toISOString() });
 
@@ -911,7 +924,14 @@ function getSchoolsByMarkaz(targetMarkaz) {
 //  HELPERS
 // ════════════════════════════════════════════════════════════════════
 function jsonOut(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
+  const body = JSON.stringify(obj);
+  if (JSONP_CALLBACK) {
+    // JavaScript MIME, not JSON: browsers refuse to execute a cross-origin
+    // script response that is served as application/json (ORB/CORB).
+    return ContentService.createTextOutput(JSONP_CALLBACK + "(" + body + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(body)
     .setMimeType(ContentService.MimeType.JSON);
 }
 

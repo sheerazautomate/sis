@@ -47,10 +47,21 @@ function schoolRow(s, over = {}) {
 }
 
 // ── environment ─────────────────────────────────────────────────────────────
-function makeEnv({ master, handler, htmlPath }) {
+/**
+ * @param {object} opts
+ *   master       published school-list CSV
+ *   handler      mock Apps Script: (req, n) => response object
+ *   htmlPath     dashboard to load (defaults to index.html)
+ *   corsBlocked  every fetch() to Apps Script throws TypeError — exactly what a
+ *                browser does when the response arrives without
+ *                Access-Control-Allow-Origin ("Cross-Origin Request Blocked")
+ *   jsonpBlocked the CORS-free <script> channel fails as well
+ */
+function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked = false }) {
   const downloads = [];
   const gasRequests = [];
   const consoleErrors = [];
+  const jsonpRequests = [];
 
   const vc = new VirtualConsole();
   vc.on('jsdomError', e => consoleErrors.push('jsdomError: ' + e.message));
@@ -125,6 +136,9 @@ function makeEnv({ master, handler, htmlPath }) {
           };
           gasRequests.push(req);
 
+          // A CORS block: the browser never lets the page read the response.
+          if (corsBlocked) throw new TypeError('Failed to fetch');
+
           const out = await handler(req, gasRequests.length);
 
           if (out.__throw === 'network') throw new TypeError('Failed to fetch');
@@ -139,6 +153,51 @@ function makeEnv({ master, handler, htmlPath }) {
 
         return resp({ body: '', status: 404 });
       };
+
+      // ── JSONP channel (the dashboard's CORS-free fallback) ────────────────
+      // jsdom does not fetch external scripts, so the injected <script> is
+      // answered here through the same mock backend as fetch().
+      // document.head is not parsed yet inside beforeParse, so hook the
+      // prototype that head's appendChild resolves through.
+      const nativeAppend = window.Element.prototype.appendChild;
+      window.Element.prototype.appendChild = function (node) {
+        if (!node || node.tagName !== 'SCRIPT' || !node.src || node.src.indexOf(GAS_HOST) === -1) {
+          return nativeAppend.call(this, node);
+        }
+        const u = new URL(node.src, 'http://localhost/');
+        const cb = u.searchParams.get('callback');
+        const req = {
+          action:   u.searchParams.get('action'),
+          markaz:   u.searchParams.get('markaz'),
+          runId:    u.searchParams.get('runId'),
+          round:    u.searchParams.get('round'),
+          emis:     (u.searchParams.get('emis') || '').split(',').filter(Boolean),
+          callback: cb,
+        };
+        gasRequests.push(req);
+        jsonpRequests.push(req);
+
+        Promise.resolve()
+          .then(() => (jsonpBlocked ? { __throw: 'network' } : handler(req, gasRequests.length)))
+          .then(out => {
+            if (out && out.__throw === 'network') {
+              node.dispatchEvent(new window.Event('error'));
+              return;
+            }
+            if (out && out.__html !== undefined) {
+              // An HTML error page is not executable — the browser reports a
+              // script parse failure, never a callback.
+              const ev = new window.Event('error');
+              ev.filename = node.src;
+              window.dispatchEvent(ev);
+              return;
+            }
+            if (typeof window[cb] === 'function') window[cb](out);
+          })
+          .catch(() => node.dispatchEvent(new window.Event('error')));
+
+        return node;
+      };
     },
   });
 
@@ -151,9 +210,10 @@ function makeEnv({ master, handler, htmlPath }) {
     pollTimeoutMs: 1000, triggerTimeoutMs: 1000, triggerRetries: 3,
     maxPolls: 400, maxRounds: 3, roundGateMs: 8, stallPolls: 4,
     maxNetErrors: 3, runDeadlineMs: 20000, csvRetries: 1,
+    jsonpTimeoutMs: 500, probeTimeoutMs: 500,
   });
 
-  return { dom, window, S, downloads, gasRequests, consoleErrors,
+  return { dom, window, S, downloads, gasRequests, jsonpRequests, consoleErrors,
            doc: window.document, $: id => window.document.getElementById(id) };
 }
 

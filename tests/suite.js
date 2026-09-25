@@ -427,8 +427,86 @@ section('18. Cascading selects and completeness source');
   env.window.close();
 }
 
-// ── 19. No console errors ─────────────────────────────────────────────────
-section('19. Page health');
+// ── 19. CORS block on fetch() → the JSONP channel carries the run ─────────
+section('19. "Cross-Origin Request Blocked" on fetch — JSONP fallback');
+{
+  const all = schools(10);
+  const env = makeEnv({
+    master: makeMaster(10),
+    corsBlocked: true,                       // every fetch() to Apps Script dies CORS-style
+    handler: (req) => {
+      if (req.action === 'fetch') return { started: true, runId: req.runId };
+      return { state: 'done', rows: all.map(s => schoolRow(s)), fetched: 10, total: 10 };
+    },
+  });
+  await bootMaster(env);
+  await selectPath(env, SEL);
+
+  await env.S.startFetch();
+  const run = env.S.run;
+
+  eq(run.phase, 'done', 'run still completes when fetch() is CORS-blocked');
+  eq(run.store.size, 10, 'all 10 schools arrived over the CORS-free channel');
+  eq(env.S.transport, 'jsonp', 'transport switched to jsonp and stays there');
+  ok(env.jsonpRequests.length > 0, `the <script> channel was used (${env.jsonpRequests.length} requests)`);
+  ok(env.jsonpRequests.every(r => r.callback && r.callback.indexOf('__sisJsonp') === 0),
+     'every fallback request carries a callback name');
+  ok(!env.$('errorState').classList.contains('visible'), 'no error panel shown');
+  eq(env.consoleErrors.length, 0, `no console errors (${env.consoleErrors.join(' | ') || 'clean'})`);
+  env.window.close();
+}
+
+// ── 20. Both channels blocked → say so, precisely ────────────────────────
+section('20. Both channels blocked — CORS explained, Connection check reports');
+{
+  const env = makeEnv({
+    master: makeMaster(4),
+    corsBlocked: true,
+    jsonpBlocked: true,
+    handler: () => ({ started: true }),
+  });
+  await bootMaster(env);
+  await selectPath(env, SEL);
+
+  await env.S.startFetch();
+  const msg = env.$('errorMsg').textContent;
+  const detail = env.$('errorDetail').textContent;
+
+  ok(env.$('errorState').classList.contains('visible'), 'error panel is shown');
+  ok(/blocked/i.test(msg) && /cors/i.test(msg), `message names the CORS block ("${msg}")`);
+  ok(detail.indexOf('script.google.com') >= 0, 'detail names the blocked Apps Script URL');
+  ok(/callback|Code\.gs/i.test(detail), 'detail tells the user to deploy the new server for the fallback');
+  ok(/Anyone/.test(detail), 'detail lists the deployment-access cause first');
+
+  const report = await env.S.runConnectionCheck();
+  ok(report.indexOf('script.google.com') >= 0, 'connection check names the Apps Script endpoint');
+  ok(report.indexOf('docs.google.com') >= 0, 'connection check names the school-list CSV');
+  ok((report.match(/FAILED/g) || []).length >= 2, 'both Apps Script channels are reported FAILED');
+  eq(env.$('errorMsg').textContent, 'Connection check', 'the check renders its report in the panel');
+  env.window.close();
+}
+
+// ── 21. Server without ?callback= → actionable message ────────────────────
+section('21. fetch blocked and the deployed server has no ?callback= support');
+{
+  const env = makeEnv({
+    master: makeMaster(4),
+    corsBlocked: true,
+    // Apps Script answers raw JSON / an HTML page: the injected script cannot execute it.
+    handler: () => ({ __html: '<html><body>Script function not found</body></html>' }),
+  });
+  await bootMaster(env);
+  await selectPath(env, SEL);
+
+  await env.S.startFetch();
+  const detail = env.$('errorDetail').textContent;
+  ok(/callback|Code\.gs/i.test(detail), 'detail points at the missing ?callback= (re-deploy Code.gs)');
+  ok(detail.indexOf('script.google.com') >= 0, 'detail still names the URL that was blocked');
+  env.window.close();
+}
+
+// ── 22. No console errors ─────────────────────────────────────────────────
+section('23. Page health');
 {
   const all = schools(4);
   const { env } = await boot((req) => req.action === 'fetch' ? { started: true }
