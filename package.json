@@ -1,0 +1,16 @@
+{
+  "name": "pesrp-attendance-dashboard",
+  "version": "3.0.0",
+  "private": true,
+  "description": "PESRP Attendance Dashboard - client plus Apps Script backend for Punjab school attendance",
+  "scripts": {
+    "test": "node tests/suite.js && node tests/server-suite.js && node tests/server-contract.js",
+    "test:client": "node tests/suite.js",
+    "test:server": "node tests/server-suite.js",
+    "test:contract": "node tests/server-contract.js",
+    "test:bugs": "node tests/prove-bugs.js"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
+}
