@@ -244,7 +244,14 @@
   .state-msg { text-align: center; padding: 60px 20px; color: var(--muted); font-family: var(--mono); font-size: 13px; display: none; }
   .state-msg.visible { display: block; }
   .state-msg .icon { font-size: 36px; margin-bottom: 12px; }
-  .state-msg .detail { margin-top: 10px; font-size: 11px; opacity: 0.75; word-break: break-word; max-width: 620px; margin-inline: auto; }
+  .state-msg .detail { margin-top: 10px; font-size: 11px; opacity: 0.75; word-break: break-word; max-width: 620px; margin-inline: auto; white-space: pre-line; }
+  .state-msg .btn-conn-check {
+    margin-top: 16px; background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    padding: 7px 14px; border-radius: 6px; font-family: var(--mono); font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: border-color 0.15s, background-color 0.15s;
+  }
+  .state-msg .btn-conn-check:hover { border-color: var(--accent); }
+  .state-msg .btn-conn-check:disabled { opacity: 0.6; cursor: default; }
 
   /* ── TOAST ── */
   .toast {
@@ -376,6 +383,7 @@
     <div class="icon">⚠️</div>
     <div id="errorMsg">Something went wrong.</div>
     <div class="detail" id="errorDetail"></div>
+    <button class="btn-conn-check" id="btnConnCheck">🔎 Connection check</button>
   </div>
 
   <!-- TABLES -->
@@ -468,6 +476,10 @@ const CFG = {
 
   // School-list CSV
   csvRetries:     3,
+
+  // Transport
+  jsonpTimeoutMs: 15000, // CORS-free fallback channel (script tag) budget
+  probeTimeoutMs: 8000,  // per-endpoint budget for the Connection check
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -785,50 +797,201 @@ function logRun(r, msg) {
 function isStale(r) { return !r || r.gen !== generation || r.phase === 'cancelled'; }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  HTTP — GAS answers with an HTML error page (auth wall, "script function
-//  not found", quota) using HTTP 200. That used to surface as a confusing
-//  JSON parse error; now it is detected and explained.
+//  HTTP — two transports, because a plain fetch() is not always allowed to
+//  read the answer.
+//
+//  1. gasFetch()  — the normal CORS request. Google serves Apps Script JSON
+//     with `Access-Control-Allow-Origin: *`, so this is the fast path.
+//  2. gasJsonp()  — the same request sent as a <script> tag. Script tags are
+//     not subject to CORS at all. When Google answers without the CORS header
+//     — a failed/killed execution or a quota stop returns an HTML error page,
+//     and a big secondary-wing response can trip the same edge — the browser
+//     refuses to hand the bytes to fetch() and the console shows
+//     "Cross-Origin Request Blocked". JSONP still reads the payload.
+//     Needs the server to honour ?callback= (server/Code.gs does).
+//
+//  gasGet() tries fetch() first, then JSONP, then stays on whichever one
+//  answered so a blocked channel is not paid for on every single poll.
 // ════════════════════════════════════════════════════════════════════════════
-async function gasGet(params, timeoutMs) {
+let gasTransport  = 'auto';   // 'auto' | 'fetch' | 'jsonp'  (whichever is known to work)
+let gasCorsBlocks = 0;        // consecutive responses the browser blocked
+let gasLastUrl    = '';       // last URL attempted — shown in errors + diagnostics
+
+function gasQuery(params) {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
   }
+  return qs;
+}
+
+async function gasFetch(params, timeoutMs) {
+  const url = `${GAS_URL}?${gasQuery(params).toString()}`;
+  gasLastUrl = url;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const resp = await fetch(`${GAS_URL}?${qs.toString()}`, {
+    const resp = await fetch(url, {
       signal: ctrl.signal,
       redirect: 'follow',
       cache: 'no-store',
       headers: { 'Accept': 'application/json' },
     });
     const text = await resp.text();
-    if (!resp.ok) return { ok: false, kind: 'http', status: resp.status, body: text };
+    if (!resp.ok) return { ok: false, kind: 'http', status: resp.status, body: text, url, transport: 'fetch' };
     const trimmed = text.trim();
-    if (!trimmed) return { ok: false, kind: 'empty', body: text };
-    if (trimmed[0] === '<') return { ok: false, kind: 'html', body: text };
+    if (!trimmed) return { ok: false, kind: 'empty', body: text, url, transport: 'fetch' };
+    if (trimmed[0] === '<') return { ok: false, kind: 'html', body: text, url, transport: 'fetch' };
     try {
-      return { ok: true, data: JSON.parse(trimmed) };
+      return { ok: true, data: JSON.parse(trimmed), url, transport: 'fetch' };
     } catch (e) {
-      return { ok: false, kind: 'badjson', body: text, error: e.message };
+      return { ok: false, kind: 'badjson', body: text, error: e.message, url, transport: 'fetch' };
     }
   } catch (e) {
     const timedOut = e && e.name === 'AbortError';
-    return { ok: false, kind: timedOut ? 'timeout' : 'network', error: e && e.message ? e.message : String(e) };
+    // Anything else (TypeError: "Failed to fetch" / "NetworkError") means the
+    // browser would not let us read the response — the CORS block symptom.
+    return {
+      ok: false, kind: timedOut ? 'timeout' : 'network', url, transport: 'fetch',
+      blocked: !timedOut,
+      error: e && e.message ? e.message : String(e),
+    };
   } finally {
     clearTimeout(timer);
   }
 }
 
+/** The CORS-free channel: inject a <script> and let the server call us back. */
+function gasJsonp(params, timeoutMs) {
+  return new Promise(resolve => {
+    const qs = gasQuery(params);
+    const cb = '__sisJsonp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    qs.set('callback', cb);
+    const url = `${GAS_URL}?${qs.toString()}`;
+    gasLastUrl = url;
+
+    const script = document.createElement('script');
+    let settled = false;
+    let timer = null;
+
+    const finish = res => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      window.removeEventListener('error', onGlobalError, true);
+      try { delete window[cb]; } catch (e) { try { window[cb] = undefined; } catch (e2) {} }
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(Object.assign({ url, transport: 'jsonp' }, res));
+    };
+
+    // A parse/exec failure inside an injected script does NOT fire script.onerror
+    // — it surfaces as a global error event. That is how a server without
+    // ?callback= support (raw JSON), or an HTML error page, shows up here.
+    const onGlobalError = ev => {
+      const where = (ev && (ev.filename || (ev.target && ev.target.src))) || '';
+      if (where && where.indexOf(GAS_URL) === 0) {
+        finish({ ok: false, kind: 'html', error: 'the script did not execute — the server answered without a JSONP wrapper' });
+      }
+    };
+
+    window[cb] = data => finish({ ok: true, data });
+    window.addEventListener('error', onGlobalError, true);
+    script.onerror = () => finish({ ok: false, kind: 'network', blocked: true, error: 'the script request failed' });
+    script.async = true;
+    script.src = url;
+    timer = setTimeout(
+      () => finish({ ok: false, kind: 'timeout', error: `no answer within ${Math.round(timeoutMs / 1000)}s` }),
+      timeoutMs);
+    document.head.appendChild(script);
+  });
+}
+
+/** Both transports failed: describe what the browser blocked, not just "failed". */
+function combineBlocked(fetchRes, jsonpRes, probe) {
+  const timedOut = (fetchRes && fetchRes.kind === 'timeout') || (jsonpRes && jsonpRes.kind === 'timeout');
+  return {
+    ok: false,
+    kind: timedOut ? 'timeout' : 'cors',
+    blocked: true,
+    url: (fetchRes && fetchRes.url) || gasLastUrl,
+    error: (fetchRes && fetchRes.error) || '',
+    jsonpError: jsonpRes ? (jsonpRes.error || jsonpRes.kind) : '',
+    probeOk: !!(probe && probe.ok),   // does a TINY call come back over the fallback?
+  };
+}
+
+// One tiny CORS-free health call per session, only when something failed: it
+// separates "the deployment cannot be reached at all" from "this particular
+// response was the problem", which are two very different fixes.
+let jsonpProbe = null;
+async function jsonpHealthProbe() {
+  if (jsonpProbe === null) jsonpProbe = await gasJsonp({ action: 'health', _: Date.now() }, CFG.probeTimeoutMs);
+  return jsonpProbe;
+}
+
+function noteCorsFallback(params, url) {
+  gasCorsBlocks++;
+  console.warn(
+    '[SIS] Apps Script response was blocked by the browser (no readable CORS response) for ' +
+    `action=${params.action || 'status'} — switched to the CORS-free JSONP channel. URL: ${url}`);
+}
+
+async function gasGet(params, timeoutMs) {
+  if (gasTransport === 'jsonp') {
+    const j = await gasJsonp(params, timeoutMs);
+    if (j.ok) return j;
+    const f = await gasFetch(params, timeoutMs);          // the block may have been transient
+    if (f.ok) { gasTransport = 'auto'; gasCorsBlocks = 0; return f; }
+    if (!f.blocked && !j.blocked) return f;               // a real answer we can explain
+    return combineBlocked(f, j, await jsonpHealthProbe());
+  }
+
+  const res = await gasFetch(params, timeoutMs);
+  if (res.ok) { gasCorsBlocks = 0; return res; }
+  if (!res.blocked) return res;                            // http/html/badjson/timeout: not a CORS problem
+
+  const j = await gasJsonp(params, timeoutMs);
+  if (j.ok) {
+    if (gasTransport !== 'jsonp') { noteCorsFallback(params, res.url); gasTransport = 'jsonp'; }
+    return j;
+  }
+  return combineBlocked(res, j, await jsonpHealthProbe());
+}
+
 function describeGasFailure(res) {
   switch (res.kind) {
     case 'timeout':
-      return { title: 'The server did not answer in time.',
-               detail: 'Apps Script is cold-starting or overloaded. Nothing was lost — the run is still polling.' };
+      return {
+        title: 'The server did not answer in time.',
+        detail: 'Apps Script is cold-starting or overloaded. Nothing was lost — the run is still polling.'
+          + (res.blocked ? ' Note: the browser also had to fall back to the CORS-free channel for this request — see Connection check.' : ''),
+      };
     case 'network':
-      return { title: 'Network error reaching Apps Script.',
-               detail: res.error || 'Check the connection, then retry.' };
+      return {
+        title: 'Network error reaching Apps Script.',
+        detail: (res.error || 'Check the connection, then retry.')
+          + ' If the browser console says "Cross-Origin Request Blocked" / "blocked by CORS policy", the response could not be read — press Connection check for the details.',
+      };
+    case 'cors':
+      return {
+        title: 'The browser blocked the Apps Script response (CORS).',
+        detail: `Request: ${res.url || GAS_URL} — the request left the browser but no readable response came back`
+          + (res.jsonpError ? `, and the CORS-free retry (JSONP) failed too: ${res.jsonpError}.` : '.')
+          + (res.probeOk
+              ? ' A small health call to the same deployment DOES come back over the CORS-free channel, so the'
+                + ' deployment itself is reachable — this response is the problem. That is the signature of a run'
+                + ' that failed or was killed (uncaught exception, the 6-minute execution kill, a quota stop):'
+                + ' Google then answers with an HTML error page that carries no CORS header, which the browser'
+                + ' reports as CORS. Open Apps Script → Executions and look at the failing run — and note that a'
+                + ' secondary-wing Markaz is 100+ schools, so its responses are the big ones.'
+              : ' Usual causes, in this order:'
+                + ' (1) the Apps Script web app is not deployed with "Who has access: Anyone";'
+                + ' (2) the script run failed — an exception, the 6-minute execution kill or a quota stop makes'
+                + ' Google answer with an HTML error page that carries no CORS header, which the browser reports'
+                + ' as CORS (open Apps Script → Executions and look at the failing run);'
+                + ' (3) the deployed server predates server/Code.gs in this repo, which adds the ?callback= support'
+                + ' the CORS-free retry needs.'),
+      };
     case 'http':
       return { title: `Apps Script returned HTTP ${res.status}.`,
                detail: (res.body || '').replace(/<[^>]*>/g, ' ').slice(0, 300) };
@@ -858,7 +1021,10 @@ function describeGasFailure(res) {
 //  Returns 'accepted' | 'background' | 'failed'
 // ════════════════════════════════════════════════════════════════════════════
 async function triggerFetch(r, emisList) {
-  const params = { action: 'fetch', markaz: r.sel.markaz, runId: r.id, round: r.round };
+  // slim=1: starting the run does not need the rows back. The trigger is the
+  // longest, heaviest call, and the big responses are the ones Google has been
+  // seen to answer without a CORS header — so ask for no rows at all here.
+  const params = { action: 'fetch', markaz: r.sel.markaz, runId: r.id, round: r.round, slim: 1 };
   if (emisList && emisList.length) params.emis = emisList.join(',');
 
   for (let attempt = 1; attempt <= CFG.triggerRetries; attempt++) {
@@ -1107,7 +1273,7 @@ async function pollOnce(r) {
       r.stall = 0;
       logRun(r, 'progress stalled — poking the server to continue');
       setStreamMsg('No progress for a while — nudging the server to continue…');
-      gasGet({ action: 'fetchChunk', markaz: r.sel.markaz, runId: r.id }, CFG.pollTimeoutMs);
+      gasGet({ action: 'fetchChunk', markaz: r.sel.markaz, runId: r.id, slim: 1 }, CFG.pollTimeoutMs);
     }
     renderAll();
     return false;
@@ -1631,6 +1797,12 @@ $('selMarkaz').addEventListener('change',   () => { onMarkazChange();  saveState
 $('btnFetch').addEventListener('click', () => { startFetch(); });
 $('btnCancel').addEventListener('click', () => { cancelRun(false); });
 $('btnRetryMissing').addEventListener('click', () => { retryMissing(); });
+$('btnConnCheck').addEventListener('click', async function () {
+  this.disabled = true;
+  const old = this.textContent;
+  this.textContent = '⏳ Checking…';
+  try { await runConnectionCheck(); } finally { this.textContent = old; this.disabled = false; }
+});
 
 $('btnExport').addEventListener('click', e => {
   e.stopPropagation();
@@ -1650,31 +1822,123 @@ document.querySelectorAll('[data-quickexport]').forEach(b => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-//  INIT
+//  SCHOOL LIST — the published CSV. A cross-origin GET with no CORS header
+//  (revoked publication, wrong gid, an error page) shows up in the console as
+//  "Cross-Origin Request Blocked" too, so it gets the same treatment.
 // ════════════════════════════════════════════════════════════════════════════
+async function csvFetchOnce(url, timeoutMs) {
+  const sep = url.includes('?') ? '&' : '?';
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs || CFG.probeTimeoutMs);
+  try {
+    const resp = await fetch(`${url}${sep}_=${Date.now()}`, { cache: 'no-store', signal: ctrl.signal });
+    if (!resp.ok) return { ok: false, kind: 'http', status: resp.status, url };
+    const text = await resp.text();
+    if (!text.trim()) return { ok: false, kind: 'empty', url };
+    return { ok: true, text, url };
+  } catch (e) {
+    const timedOut = e && e.name === 'AbortError';
+    return { ok: false, kind: timedOut ? 'timeout' : 'network', blocked: !timedOut, error: e && e.message, url };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function loadMasterList() {
   let lastErr = null;
   for (let attempt = 1; attempt <= CFG.csvRetries; attempt++) {
-    try {
-      const sep = CSV_URL.includes('?') ? '&' : '?';
-      const resp = await fetch(`${CSV_URL}${sep}_=${Date.now()}`, { cache: 'no-store' });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const text = await resp.text();
-      const rows = parseCSV(text);
-      if (!rows.length) throw new Error('the sheet returned no rows');
-      allRows = rows;
-      masterLoaded = true;
-      return true;
-    } catch (e) {
-      lastErr = e;
-      if (attempt < CFG.csvRetries) await sleep(800 * attempt);
+    const res = await csvFetchOnce(CSV_URL);
+    if (res.ok) {
+      try {
+        const rows = parseCSV(res.text);
+        if (!rows.length) throw new Error('the sheet returned no rows');
+        allRows = rows;
+        masterLoaded = true;
+        return true;
+      } catch (e) { lastErr = e; }
+    } else {
+      lastErr = new Error(res.kind === 'http' ? `HTTP ${res.status}`
+        : res.kind === 'network' ? 'the browser blocked the response (CORS) or the network is down'
+        : res.kind === 'timeout' ? 'the request timed out'
+        : 'the sheet returned an empty body');
+      if (res.blocked) lastErr.cors = true;
     }
+    if (attempt < CFG.csvRetries) await sleep(800 * attempt);
   }
   showError('Failed to load the school list from Google Sheets.',
-            `${lastErr && lastErr.message ? lastErr.message : lastErr} — the district/tehsil/markaz selectors and the "did we get every school?" check both need this list.`);
+    `${lastErr && lastErr.message ? lastErr.message : lastErr} — the district/tehsil/markaz selectors and the `
+    + `"did we get every school?" check both need this list. URL: ${CSV_URL}.`
+    + (lastErr && lastErr.cors
+        ? ' The browser refused to read the response: the sheet must stay published to the web ("Publish to the web" → CSV), '
+          + 'the gid must still exist, and the console must not say "Cross-Origin Request Blocked".'
+        : '')
+    + ' Press Connection check for a per-endpoint report.');
   return false;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  CONNECTION CHECK — answers "which URL is actually blocked, and why?" without
+//  making the user read the browser console.
+// ════════════════════════════════════════════════════════════════════════════
+async function runConnectionCheck() {
+  const lines = [];
+  lines.push(`Page origin:  ${location.origin || location.href}`);
+  lines.push(`Apps Script:  ${GAS_URL}`);
+  lines.push(`School list:  ${CSV_URL}`);
+  lines.push('');
+
+  const f = await gasFetch({ action: 'health', _: Date.now() }, CFG.probeTimeoutMs);
+  lines.push(f.ok
+    ? `1. Apps Script via fetch (CORS):   OK — ${JSON.stringify(f.data)}`
+    : `1. Apps Script via fetch (CORS):   FAILED — ${f.kind}${f.error ? ' — ' + f.error : ''}`);
+
+  const j = await gasJsonp({ action: 'health', _: Date.now() }, CFG.jsonpTimeoutMs);
+  lines.push(j.ok
+    ? `2. Apps Script via JSONP (no CORS): OK — ${JSON.stringify(j.data)}`
+    : `2. Apps Script via JSONP (no CORS): FAILED — ${j.kind}${j.error ? ' — ' + j.error : ''}`);
+
+  const c = await csvFetchOnce(CSV_URL, CFG.probeTimeoutMs);
+  let csvRows = 0;
+  if (c.ok) { try { csvRows = parseCSV(c.text).length; } catch (e) { csvRows = 0; } }
+  lines.push(c.ok
+    ? `3. School-list CSV:                 OK — ${csvRows} rows, ${c.text.length} bytes`
+    : `3. School-list CSV:                 FAILED — ${c.kind}${c.status ? ' ' + c.status : ''}${c.error ? ' — ' + c.error : ''}`);
+
+  lines.push('');
+  if (f.ok && j.ok) {
+    lines.push('Verdict: both channels work. A CORS block would be intermittent — it usually hits the'
+      + ' long/heavy calls (a big secondary-wing Markaz), which is exactly when Google may answer'
+      + ' without the CORS header. The dashboard retries those over JSONP automatically.');
+  } else if (!f.ok && j.ok) {
+    lines.push('Verdict: fetch() is CORS-blocked but the CORS-free channel works — the dashboard is using'
+      + ' it now, so fetches will still complete. That block is Google-side (see the Causes list below).');
+  } else if (f.ok && !j.ok) {
+    lines.push('Verdict: fetch() works, the CORS-free channel does not. Usually that means the deployed'
+      + ' Apps Script predates server/Code.gs in this repo (no ?callback= support) — re-deploy it so the'
+      + ' fallback is available when fetch() does get blocked.');
+  } else {
+    lines.push('Verdict: the Apps Script endpoint does not answer from this browser at all.'
+      + ' Check: (a) Deploy → Manage deployments → the web app\'s "Who has access" must be "Anyone"'
+      + ' (not "Anyone with Google account" — that redirects to a login page, which the browser reports'
+      + ' as CORS); (b) the URL is the current deployment; (c) no VPN/proxy/extension is blocking'
+      + ' script.google.com.');
+  }
+  lines.push('');
+  lines.push('Causes of "Cross-Origin Request Blocked" on a static dashboard, in order of likelihood:');
+  lines.push('  • a failed/killed Apps Script execution or a quota stop → HTML error page with no CORS header');
+  lines.push('  • the web app is not deployed with access "Anyone"');
+  lines.push('  • the deployed server does not support ?callback=, so the JSONP retry cannot work');
+  lines.push('  • the published school-list CSV was unpublished, or its gid changed');
+
+  const report = lines.join('\n');
+  console.warn('[SIS] connection check\n' + report);
+  showError('Connection check', report);
+  return report;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════════════════
 (async function init() {
   $('headerDate').textContent = todayStr();
 
@@ -1711,6 +1975,9 @@ window.__SIS__ = {
   missingList, coveredCount, coverageText, currentRows,
   startFetch, retryMissing, cancelRun, exportReport,
   masterRowsFor,
+  // transport + diagnostics
+  gasGet, gasFetch, gasJsonp, runConnectionCheck,
+  get transport() { return gasTransport; },
 };
 </script>
 </body>

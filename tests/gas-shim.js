@@ -133,10 +133,12 @@ function makeGas({ spreadsheets, sis, sleep = () => {} } = {}) {
     }),
   };
 
-  let lastOutput = null;
+  let lastOutput = null, lastMime = null;
   const ContentService = {
-    MimeType: { JSON: 'application/json' },
-    createTextOutput: (s) => ({ setMimeType: () => { lastOutput = s; return { getContent: () => s }; } }),
+    MimeType: { JSON: 'application/json', JAVASCRIPT: 'application/javascript' },
+    createTextOutput: (s) => ({
+      setMimeType: (m) => { lastOutput = s; lastMime = m; return { getContent: () => s }; },
+    }),
   };
 
   const Utilities = {
@@ -168,14 +170,21 @@ function makeGas({ spreadsheets, sis, sleep = () => {} } = {}) {
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, { filename: 'Code.gs' });
 
-  const call = (params) => {
-    lastOutput = null;
+  /** Verbatim body of the response — needed to assert on JSONP wrapping. */
+  const callRaw = (params) => {
+    lastOutput = null; lastMime = null;
     sandbox.doGet({ parameter: params });
-    return lastOutput ? JSON.parse(lastOutput) : null;
+    return lastOutput;
   };
 
-  return { sandbox, api: sandbox.__api, ss, cache, stats, counters, call,
-           getLastOutput: () => lastOutput, setProp: (k, v) => props.set(k, v) };
+  const call = (params) => {
+    const raw = callRaw(params);
+    return raw ? JSON.parse(raw) : null;
+  };
+
+  return { sandbox, api: sandbox.__api, ss, cache, stats, counters, call, callRaw,
+           getLastOutput: () => lastOutput, getLastMime: () => lastMime,
+           setProp: (k, v) => props.set(k, v) };
 }
 
 module.exports = { makeGas, Sheet, Spreadsheet, counters };

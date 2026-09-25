@@ -99,12 +99,35 @@ const NUM_MONTHLY_COLS = 14;
 // ════════════════════════════════════════════════════════════════════
 //  ROUTER
 // ════════════════════════════════════════════════════════════════════
+/**
+ * JSONP channel. The dashboard sends `?callback=fn` when the browser refuses
+ * to hand it a CORS response ("Cross-Origin Request Blocked" — an HTML error
+ * page from a failed/killed execution, a quota stop, or a large response that
+ * comes back without `Access-Control-Allow-Origin`). A <script> tag is not
+ * subject to CORS, so the same payload arrives as `fn({...});` instead.
+ */
+let JSONP_CALLBACK = "";
+
+/**
+ * Payload shaping. `slim=1` drops the `rows` array and keeps every counter, so
+ * a caller that only wants to start a run or nudge a stalled one transfers a
+ * few hundred bytes instead of the whole Markaz. Big responses are the ones
+ * Google has been seen to answer without `Access-Control-Allow-Origin`, which
+ * the browser reports as "Cross-Origin Request Blocked".
+ */
+let RESPONSE_OPTS = { slim: false };
+
 function doGet(e) {
   const p      = (e && e.parameter) || {};
   const action = (p.action || "status").toLowerCase();
   const markaz = (p.markaz || "").trim();
   const month  = (p.month  || "").trim();
   const runId  = (p.runId  || "").trim();
+
+  // Only a plain JS identifier / dotted path is accepted — never injected raw.
+  const asked = String(p.callback || p.cb || "").trim();
+  JSONP_CALLBACK = /^[A-Za-z_$][A-Za-z0-9_$.]{0,63}$/.test(asked) ? asked : "";
+  RESPONSE_OPTS  = { slim: String(p.slim || "") === "1" };
 
   if (action === "health") return jsonOut({ version: SCRIPT_VERSION, time: new Date().toISOString() });
 
@@ -456,7 +479,7 @@ function commitIfNeeded_(job) {
 }
 
 /** Build the JSON response. Same shape as v2 plus runId / missing / version. */
-function summarize_(job, st) {
+function summarize_(job, st, slim) {
   if (!st) return { state: "empty", rows: [], fetched: 0, total: 0 };
 
   const rows   = readRows_(job.key, st.rowsStored || 0);
@@ -467,12 +490,15 @@ function summarize_(job, st) {
 
   const todayDate = (rows.find(r => r && r.todayDate) || {}).todayDate || "";
 
+  const omitRows = (slim === undefined) ? !!RESPONSE_OPTS.slim : !!slim;
+
   return {
     runId:     st.runId,
     state:     st.state,
     date:      st.date,
     todayDate: todayDate,
-    rows:      rows,
+    rows:      omitRows ? [] : rows,     // counters below stay true either way
+    rowsOmitted: omitRows,
     fetched:   rows.length,
     total:     st.total,                 // schools expected, NOT rows written
     missing:   missing,                  // EMIS codes not yet returned
@@ -504,7 +530,9 @@ function statusFor_(job, runId) {
   const cold = job.coldRead();
   if (!cold.rows.length) return { state: "empty", runId: runId || null, rows: [], fetched: 0, total: 0 };
   return {
-    runId: runId || null, state: "done", rows: cold.rows,
+    runId: runId || null, state: "done",
+    rows: RESPONSE_OPTS.slim ? [] : cold.rows,
+    rowsOmitted: !!RESPONSE_OPTS.slim,
     fetched: cold.rows.length, total: cold.rows.length, missing: [], failedCount: 0,
     todayDate: cold.todayDate, cached: false, version: SCRIPT_VERSION,
   };
@@ -911,7 +939,14 @@ function getSchoolsByMarkaz(targetMarkaz) {
 //  HELPERS
 // ════════════════════════════════════════════════════════════════════
 function jsonOut(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
+  const body = JSON.stringify(obj);
+  if (JSONP_CALLBACK) {
+    // JavaScript MIME, not JSON: browsers refuse to execute a cross-origin
+    // script response that is served as application/json (ORB/CORB).
+    return ContentService.createTextOutput(JSONP_CALLBACK + "(" + body + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(body)
     .setMimeType(ContentService.MimeType.JSON);
 }
 

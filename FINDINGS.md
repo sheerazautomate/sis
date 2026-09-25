@@ -2,8 +2,8 @@
 
 Everything below was verified against `index.html` at commit `e8ba177` (the
 pre-fix version) and re-verified against the rebuilt file by
-`node tests/suite.js` (103 checks) and `node tests/prove-bugs.js`
-(side-by-side old vs new).
+`node tests/suite.js` (126 checks), `node tests/server-suite.js` (94) and
+`node tests/server-contract.js` (26).
 
 ---
 
@@ -140,8 +140,8 @@ blank file.
 
 ```bash
 npm install          # jsdom, dev only
-npm test             # 103 checks against a mock Apps Script
-npm run test:bugs    # old vs new, side by side
+npm test             # 246 checks: client (126) + server (94) + contract (26)
+npm run test:bugs    # old vs new, side by side (needs the pre-fix commit on disk)
 ```
 
 The suite loads the **real** `index.html` into jsdom and drives it through a
@@ -257,6 +257,126 @@ Correctness over quota; on 20,000 calls/day at this scale that is affordable.
 Response adds `runId`, `missing[]`, `failedCount`, `hasMore`, `round`,
 `startedAt`, `completedAt`, `version`. All v2 fields are unchanged, so the old
 dashboard still works against this server.
+
+---
+
+## "Cross-Origin Request Blocked" in the browser console
+
+A dashboard page on `sheerazautomate.github.io` is a *different origin* from
+everything it reads, so every response must carry
+`Access-Control-Allow-Origin`. When it does not, the browser refuses to hand the
+bytes to JavaScript and the console shows `Cross-Origin Request Blocked` /
+`blocked by CORS policy` — with no HTTP status, no body, and nothing the page
+can inspect. It is the least informative error a browser produces, and it is
+why it looked like a *secondary-wing* bug: the heavy Markazes are the ones that
+hit it.
+
+Three things can strip that header, all of them Google-side:
+
+| Cause | What Google returns |
+|---|---|
+| The Apps Script execution fails — an uncaught exception, the 6-minute kill, a quota stop (`Service invoked too many times`, daily runtime) | an **HTML error page** with no CORS header |
+| The web app is not deployed as *Who has access: Anyone* (`Anyone with Google account` redirects to a login page) | a redirect the fetch cannot follow |
+| A very large response from a 100+ school secondary-wing Markaz | the payload, intermittently, without the header |
+
+The last one is the wing-specific one: a primary Markaz is 10–20 schools and
+answers in a few KB; a secondary Markaz is 100+ schools and the `status` payload
+is an order of magnitude bigger.
+
+### The evidence from the field
+
+```
+Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote
+resource at https://script.google.com/macros/s/AKfy…/exec?action=fetch&markaz=…&runId=…
+&round=1. (Reason: CORS header 'Access-Control-Allow-Origin' missing).
+Status code: 200.
+```
+
+Three things in that line matter:
+
+* the blocked URL is the **trigger** (`action=fetch`), not `status` — the longest
+  call, and the one whose response is the whole Markaz;
+* **`Status code: 200`** — Google answered, it just answered without the header;
+* it happens on the **secondary wing** and not on the primary one, i.e. it tracks
+  *response size*, not the deployment: a secondary Markaz is 100+ schools, a
+  primary one 10–20. A deployment/access problem would break every wing equally.
+
+### What the dashboard does now
+
+**Two transports instead of one** (`index.html`, `gasFetch` / `gasJsonp` /
+`gasGet`):
+
+1. `fetch()` — the normal CORS request.
+2. A `<script>` tag with `?callback=…` (**JSONP**). Script tags are *not subject
+   to CORS at all*, so they read what `fetch()` is not allowed to. The server
+   answers `cb({...});` with a JavaScript MIME type (a JSON MIME would be
+   refused by the browser's ORB/CORB rules).
+
+`gasGet()` tries fetch, and on a block retries the *same request* over JSONP; if
+that answers, the run continues on that channel instead of paying for a blocked
+request on every poll. Timeouts stay timeouts (the trigger's "server is still
+working in the background" path is unchanged), and a `TypeError` from `fetch` is
+no longer reported as a vague "Network error".
+
+**Precise messaging.** A blocked call now reports the exact URL and the three
+causes above in order, because "CORS" alone sends people to the wrong place —
+usually the problem is a *failed run* (check Apps Script → Executions), not the
+deployment settings.
+
+**Small requests where rows are not needed.** The trigger only has to *start* a
+run — the client reads `runId`/`error` from it and gets the rows from the
+`status` polls — so it now sends `slim=1`, which makes the server omit the
+`rows` array (counters, `state` and `missing[]` stay correct). The biggest,
+longest call therefore transfers a few hundred bytes instead of the whole
+Markaz. The `fetchChunk` nudge is slim too. A slim response carries
+`rowsOmitted: true` so nothing has to guess.
+
+**🔎 Connection check.** A button in the error panel probes each endpoint and
+reports which channel works:
+
+```
+1. Apps Script via fetch (CORS):    OK — {"version":"3.0.0", …}
+2. Apps Script via JSONP (no CORS): OK — {"version":"3.0.0", …}
+3. School-list CSV:                 OK — 4,213 rows, 318,904 bytes
+```
+
+* both OK → an intermittent block, most likely the heavy secondary-wing calls
+* fetch FAILED, JSONP OK → the dashboard is already working around it
+* fetch OK, JSONP FAILED → the deployed server has no `?callback=` support yet
+* both FAILED → deployment access / wrong URL / VPN or extension blocking
+  `script.google.com` — the report names each one
+
+When a call fails on both channels the dashboard makes one extra, tiny
+**CORS-free health call** and uses the answer to split the two cases that need
+different fixes: if the small call comes back, the deployment is reachable and
+*that particular response* was the problem — the message then points at
+Apps Script → Executions (a run that failed or was killed) instead of sending
+you to the deployment settings.
+
+### Server side
+
+`server/Code.gs` now honours `?callback=` (also `?cb=`): the JSON payload is
+wrapped as `cb({...});` and served as `application/javascript`. The callback
+name is validated against a plain identifier/dotted-path pattern and is *never*
+echoed raw, so `?callback=alert(1)//` is ignored. Without `callback` the
+response is byte-for-byte what it was before — the old dashboard is unaffected.
+
+> **You must re-deploy `server/Code.gs` as a new web-app version for the
+> fallback to help you.** Until then the JSONP probe fails and the check tells
+> you exactly that (the deployed build today is `3.0.0`, i.e. the version before
+> this change).
+
+Covered by tests: the client suite makes `fetch` throw a CORS `TypeError` on
+every Apps Script call and asserts the run still completes over JSONP, that the
+transport stays switched, that the trigger asks for a slim payload while
+`status` keeps asking for rows, that a full block produces the CORS explanation
+with the URL, that a server without `?callback=` produces the "re-deploy
+Code.gs" message, and that a reachable deployment with a blocked response is
+reported as such; the server suite asserts the JSONP wrapper, the MIME type,
+the ignored hostile callback name and that `slim=1` drops the rows without
+touching a single counter.
+
+---
 
 ## Deployment notes
 
