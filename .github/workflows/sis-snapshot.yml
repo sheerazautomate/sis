@@ -1,0 +1,196 @@
+name: SIS snapshot
+
+# ════════════════════════════════════════════════════════════════════════════
+# ⚠ THIS FILE HAS TO BE COPIED TO  .github/workflows/sis-snapshot.yml  TO RUN.
+# It lives in deploy/ because the GitHub App used here is not allowed to create
+# files under .github/workflows/ ("refusing to allow a GitHub App to create or
+# update workflow … without `workflows` permission"). A person can add it:
+#   repo → Add file → Create new file → name it .github/workflows/sis-snapshot.yml
+#   → paste this file → commit to main.
+# Until it is there, nothing is scheduled and the dashboard simply keeps using
+# the live Apps Script path (that fallback is automatic).
+# ════════════════════════════════════════════════════════════════════════════
+
+# Pulls attendance from sis.pesrp.edu.pk and commits it as static JSON under
+# data/. GitHub Pages then serves those files from the SAME ORIGIN as the
+# dashboard (https://sheerazautomate.github.io/sis/data/…), so a snapshot read
+# cannot be "Cross-Origin Request Blocked" — there is no second origin.
+#
+# The SIS stats endpoints answer a plain GET with no credentials, and CORS is a
+# browser-only mechanism, so a Node runner can read them directly. Apps Script
+# is not in this path: no 6-minute execution limit, no quota stop, no JSONP.
+#
+# TWO TIERS, because a province-wide sweep takes ~1.5–2 h and cannot run every
+# 30 minutes:
+#   • province  — every Markaz, twice a day (11:00 and 15:05 PKT)
+#   • hot       — only the Markazes listed in config/hot-markaz.txt, every
+#                 30 min through the school day
+#
+# NOTE: scheduled workflows only ever run from the DEFAULT branch. This file
+# has to be on `main` for the cron entries below to fire.
+
+on:
+  schedule:
+    # Cron is UTC. Pakistan is UTC+5 with no DST, so these stay correct all year.
+    - cron: '*/30 3-9 * * 1-5'   # hot list, 08:00–14:30 PKT Mon–Fri
+    - cron: '0 6 * * 1-5'        # province-wide, 11:00 PKT (mid-day read)
+    - cron: '5 10 * * 1-5'       # province-wide, 15:05 PKT (after marking closes)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'province = every Markaz; hot = config/hot-markaz.txt; custom = use the fields below'
+        type: choice
+        options: [province, hot, custom]
+        default: hot
+      district:
+        description: 'custom mode: limit to one district (e.g. LAYYAH)'
+        required: false
+        default: ''
+      markaz:
+        description: 'custom mode: limit to one Markaz name'
+        required: false
+        default: ''
+      concurrency:
+        description: 'Parallel SIS requests (be polite — 4 is fine)'
+        required: false
+        default: '4'
+      keep_days:
+        description: 'Days of history to keep under data/days/'
+        required: false
+        default: '7'
+      dry_run:
+        description: 'Fetch and report, but do not write or commit'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+# One snapshot at a time; a slow province sweep must never be overlapped by the
+# next 30-minute tick.
+concurrency:
+  group: sis-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Work out the scope
+        id: scope
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+          MODE_IN: ${{ inputs.mode }}
+          DISTRICT_IN: ${{ inputs.district }}
+          MARKAZ_IN: ${{ inputs.markaz }}
+        run: |
+          set -euo pipefail
+          HOT_FILE="config/hot-markaz.txt"
+
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            MODE="${MODE_IN:-hot}"
+            if [ "$MODE" = "custom" ]; then
+              [ -n "$DISTRICT_IN" ] && echo "district=$DISTRICT_IN" >> "$GITHUB_OUTPUT"
+              [ -n "$MARKAZ_IN" ]   && echo "markaz=$MARKAZ_IN"     >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "$SCHEDULE" = "*/30 3-9 * * 1-5" ]; then
+            MODE=hot
+          else
+            MODE=province
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+          if [ "$MODE" = "hot" ]; then
+            # Comments and blank lines ignored; NUL-safe read of the list.
+            MARKAZES=$( [ -f "$HOT_FILE" ] \
+              && grep -vE '^\s*(#|$)' "$HOT_FILE" | sed 's/\r$//' || true )
+            COUNT=$(printf '%s\n' "$MARKAZES" | grep -c . || true)
+            echo "hot_count=$COUNT" >> "$GITHUB_OUTPUT"
+            if [ "$COUNT" -eq 0 ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::Hot list ($HOT_FILE) is empty — nothing to refresh on the 30-minute tick. Add Markaz names to that file, or run the province-wide sweep."
+            else
+              echo "::notice::Hot tick: $COUNT Markaz(es) to refresh."
+              printf '%s\n' "$MARKAZES"
+            fi
+          else
+            echo "hot_count=0" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Province-wide sweep — every Markaz in the school list."
+          fi
+
+      - name: Build snapshot
+        if: steps.scope.outputs.skip != 'true'
+        env:
+          MODE: ${{ steps.scope.outputs.mode }}
+          DISTRICT: ${{ steps.scope.outputs.district }}
+          MARKAZ: ${{ steps.scope.outputs.markaz }}
+          IN_CONCURRENCY: ${{ inputs.concurrency || '4' }}
+          IN_KEEP_DAYS: ${{ inputs.keep_days || '7' }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          ARGS=(--out data --concurrency "$IN_CONCURRENCY" --delay-ms 120 --retries 3 --keep-days "$IN_KEEP_DAYS")
+
+          case "$MODE" in
+            hot)
+              # One --markaz per non-comment line of the hot list.
+              while IFS= read -r line; do
+                [ -n "$line" ] && ARGS+=(--markaz "$line")
+              done < <(grep -vE '^\s*(#|$)' config/hot-markaz.txt | sed 's/\r$//')
+              ;;
+            custom)
+              [ -n "$DISTRICT" ] && ARGS+=(--district "$DISTRICT")
+              [ -n "$MARKAZ" ]   && ARGS+=(--markaz "$MARKAZ")
+              ;;
+            province) ;;   # no filter: the whole master list
+          esac
+
+          [ "$DRY_RUN" = "true" ] && ARGS+=(--dry-run)
+          echo "mode=$MODE  args: ${ARGS[*]}"
+          node tools/build-snapshot.mjs "${ARGS[@]}" | tee snapshot.log
+
+      - name: Commit data/ if it changed
+        if: steps.scope.outputs.skip != 'true' && inputs.dry_run != true
+        run: |
+          set -euo pipefail
+          git config user.name  "sis-snapshot[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # `git add data` exits 128 ("pathspec 'data' did not match any files")
+          # when the folder does not exist, which under `set -e` would abort the
+          # step with a confusing error instead of "nothing to commit".
+          if [ -d data ]; then git add data; fi
+          if git diff --cached --quiet; then
+            echo "No change in data/ — nothing to commit."
+            exit 0
+          fi
+          git commit -m "data: SIS snapshot $(date -u +%F) ${MODE:-} [skip ci]"
+          # The branch may have moved while we were fetching. --autostash matters:
+          # a plain `pull --rebase` refuses to run with anything unstaged in the
+          # tree, which would fail all three attempts and lose the snapshot.
+          for i in 1 2 3; do
+            if git pull --rebase --autostash origin "$GITHUB_REF_NAME" && git push origin "$GITHUB_REF_NAME"; then
+              echo "Pushed."; exit 0
+            fi
+            echo "push attempt $i failed, retrying…"; sleep 5
+          done
+          echo "::error::could not push the snapshot after 3 attempts"
+          exit 1
+        env:
+          MODE: ${{ steps.scope.outputs.mode }}
+
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-log
+          path: snapshot.log
+          if-no-files-found: ignore
