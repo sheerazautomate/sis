@@ -184,7 +184,8 @@ no JSONP, no HTML-error-page-without-CORS-header class of failure.
 | Commit race with a normal push | `git pull --rebase` + 3 retries in the workflow. |
 | Repo bloat | `--keep-days` pruning; summary-only long history; orphan-branch escape hatch. |
 | **UNCHECKED:** whether GitHub's runner IP range reaches `sis.pesrp.edu.pk` | My sandbox has no outbound network to that host (`SSL_ERROR_SYSCALL`), so I could not prove it. It answered a non-sandbox egress fine, and it answers Google's. First workflow run settles it in one step — `--dry-run --limit 20` is a 30-second check. |
-| **UNCHECKED:** number of Markazes / real EMIS codes | The published CSV returns HTTP 500 to my fetch tool (3.4 MB is beyond its limit). Your browser reads it fine — 38,134 rows. The workflow logs the true count on its first run. |
+| **UNCHECKED:** the true Markaz count | The published CSV returns HTTP 500 to my fetch tool (3.4 MB is beyond its limit). Your browser reads it fine — 38,134 rows. The workflow logs the real count on its first run. |
+| Header names in the published CSV | **Closed by proof, not assumption.** Extracted every key `index.html` reads off a master-list row (`newRun` + `masterRowsFor`) and every key the builder's `normaliseSchool` accepts: the builder covers all 17, missing **none**, and it accepts 3 more. So whatever spelling the sheet uses, if the dashboard works today the builder reads the same list. All four EMIS spellings (`EMIS`/`emis`/`EMIS Code`/`EMISCode`) round-trip correctly. |
 
 ---
 
