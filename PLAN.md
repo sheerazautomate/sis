@@ -229,6 +229,18 @@ passed through); and `node tools/build-snapshot.mjs --schools … --district LAY
 --limit 2 --dry-run` loads the list, applies the filter, and exits **3** when every school
 fails so a broken snapshot is never committed.
 
+**The commit step was executed, not just read** — extracted from the YAML and run in a
+scratch repo against a real local `origin`. That found two bugs reading alone would not
+have:
+
+1. `git add data` exits **128** (`fatal: pathspec 'data' did not match any files`) when
+   `data/` does not exist yet, and under `set -euo pipefail` that aborts the step instead
+   of reporting "nothing to commit". Now guarded with `[ -d data ]`.
+2. `git pull --rebase` **refuses to run with anything unstaged**, so all three push
+   attempts failed and the snapshot was committed locally but never published — a silent
+   loss. Now `--autostash`. Re-run confirms: commit contains `data/` only, the unrelated
+   dirty file is left dirty, and `origin` head matches local head.
+
 **Not verified, and I want to be explicit about it:** no real SIS request has been made
 from this sandbox — it has no outbound route to `sis.pesrp.edu.pk` (`SSL_ERROR_SYSCALL`).
 The URL shape is the one I confirmed live; the transport is first proven by the workflow's

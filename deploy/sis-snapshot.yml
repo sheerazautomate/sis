@@ -164,15 +164,20 @@ jobs:
           set -euo pipefail
           git config user.name  "sis-snapshot[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data
+          # `git add data` exits 128 ("pathspec 'data' did not match any files")
+          # when the folder does not exist, which under `set -e` would abort the
+          # step with a confusing error instead of "nothing to commit".
+          if [ -d data ]; then git add data; fi
           if git diff --cached --quiet; then
             echo "No change in data/ — nothing to commit."
             exit 0
           fi
           git commit -m "data: SIS snapshot $(date -u +%F) ${MODE:-} [skip ci]"
-          # The branch may have moved while we were fetching.
+          # The branch may have moved while we were fetching. --autostash matters:
+          # a plain `pull --rebase` refuses to run with anything unstaged in the
+          # tree, which would fail all three attempts and lose the snapshot.
           for i in 1 2 3; do
-            if git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "$GITHUB_REF_NAME"; then
+            if git pull --rebase --autostash origin "$GITHUB_REF_NAME" && git push origin "$GITHUB_REF_NAME"; then
               echo "Pushed."; exit 0
             fi
             echo "push attempt $i failed, retrying…"; sleep 5
