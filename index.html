@@ -1996,7 +1996,43 @@ async function csvFetchOnce(url, timeoutMs) {
   }
 }
 
+/**
+ * Turn the published column table back into the same header-keyed objects
+ * parseCSV() produces, so every consumer (dropdowns, masterRowsFor, the
+ * completeness gate) sees one shape whichever source supplied the list.
+ */
+function tableToRows(table) {
+  if (!table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) return null;
+  const headers = table.columns.map(h => String(h).trim());
+  if (!headers.length) return null;
+  return table.rows
+    .filter(r => Array.isArray(r) && r.some(c => String(c).trim() !== ''))
+    .map(r => {
+      const o = {};
+      headers.forEach((h, i) => { o[h] = String(r[i] === undefined ? '' : r[i]).trim(); });
+      return o;
+    });
+}
+
+/**
+ * The master list from this repository, same-origin. Preferred over the
+ * published sheet: it is cacheable (the CSV is fetched with no-store and a
+ * cache-buster, so it is re-downloaded on every load) and it removes the
+ * dashboard's last cross-origin read. Any failure falls back to the CSV.
+ */
+async function loadStaticMasterList() {
+  const res = await fetchJson(`${DATA_BASE}schools.json`, CFG.probeTimeoutMs);
+  if (!res.ok) return false;
+  const rows = tableToRows(res.data);
+  if (!rows || !rows.length) return false;
+  allRows = rows;
+  masterLoaded = true;
+  return true;
+}
+
 async function loadMasterList() {
+  if (await loadStaticMasterList()) return true;
+
   let lastErr = null;
   for (let attempt = 1; attempt <= CFG.csvRetries; attempt++) {
     const res = await csvFetchOnce(CSV_URL);
@@ -2049,12 +2085,26 @@ async function runConnectionCheck() {
     ? `2. Apps Script via JSONP (no CORS): OK — ${JSON.stringify(j.data)}`
     : `2. Apps Script via JSONP (no CORS): FAILED — ${j.kind}${j.error ? ' — ' + j.error : ''}`);
 
+  // Same-origin snapshot data published into this repository. When present it is
+  // what the dashboard actually reads, so the two lines below say which source
+  // is live rather than leaving you to guess.
+  const man = await getManifest(true);
+  lines.push(man
+    ? `3. Snapshot data (same-origin):     OK — ${man.markazes.length} Markaz file(s), generated ${fmtGenerated(man.generatedAt) || 'unknown'}`
+    : `3. Snapshot data (same-origin):     none published — the dashboard is reading live from Apps Script`);
+
+  const staticList = await fetchJson(`${DATA_BASE}schools.json`, CFG.probeTimeoutMs);
+  const staticRows = staticList.ok ? (tableToRows(staticList.data) || []).length : 0;
+  lines.push(staticList.ok
+    ? `4. School list (same-origin):       OK — ${staticRows} rows, in use`
+    : `4. School list (same-origin):       not published — falling back to the CSV below`);
+
   const c = await csvFetchOnce(CSV_URL, CFG.probeTimeoutMs);
   let csvRows = 0;
   if (c.ok) { try { csvRows = parseCSV(c.text).length; } catch (e) { csvRows = 0; } }
   lines.push(c.ok
-    ? `3. School-list CSV:                 OK — ${csvRows} rows, ${c.text.length} bytes`
-    : `3. School-list CSV:                 FAILED — ${c.kind}${c.status ? ' ' + c.status : ''}${c.error ? ' — ' + c.error : ''}`);
+    ? `5. School-list CSV (fallback):      OK — ${csvRows} rows, ${c.text.length} bytes`
+    : `5. School-list CSV (fallback):      FAILED — ${c.kind}${c.status ? ' ' + c.status : ''}${c.error ? ' — ' + c.error : ''}`);
 
   lines.push('');
   if (f.ok && j.ok) {

@@ -99,6 +99,7 @@ fallback already handles it.
 | `data/manifest.json` | Generated. The only file whose name the client must know. |
 | `data/days/<YYYY-MM-DD>/<district>-<markaz>.json` | Generated. One file per Markaz per day. |
 | `data/days/<YYYY-MM-DD>/summary.json` | Generated. Per-Markaz totals, tiny — this is the long-history layer. |
+| `data/schools.json` | Generated. The master list as a compact column table — replaces the 3.4 MB cross-origin CSV. |
 | `index.html` | **Done.** `loadSnapshot()` is now what the Fetch button does: same-origin read, and **every** failure path falls through to the live Apps Script fetch. New `⟳ Live` button forces the live path. `normalizeRow()`, the completeness gate, the tables, the cards and all six CSV exports are untouched. |
 | `tests/harness.js` | **Done.** Optional `dataFiles` so tests can serve same-origin snapshot files. |
 
@@ -120,7 +121,8 @@ Built 1,000 realistic rows through the real builder and measured:
 | Bytes per row | **359.6** |
 | Full master list, 38,134 schools (your verified row count) | **13.1 MB/day** raw |
 | One Markaz file (100 schools) | **~36 KB** raw, ~2–4 KB gzipped |
-| Today's school-list CSV on every page load | **3,439,164 bytes** (your Connection check) |
+| Today's school-list CSV on every page load | **3,439,164 bytes**, cross-origin, fetched `no-store` with a cache-buster so it is **never** cached (your Connection check) |
+| Same list as `data/schools.json` | same size, but same-origin and cacheable — after the first load it costs a revalidation, not 3.4 MB |
 
 So the *page* gets dramatically lighter — a 36 KB same-origin file replaces a 3.4 MB
 cross-origin CSV plus an Apps Script round trip.
@@ -188,7 +190,7 @@ no JSONP, no HTML-error-page-without-CORS-header class of failure.
 
 ## 8. Already built, and how it was verified
 
-`npm test` → **331 checks passed** (126 client + 94 server + 26 contract + 85 snapshot).
+`npm test` → **347 checks passed** (126 client + 94 server + 26 contract + 101 snapshot).
 
 `npm run test:snapshot` runs the real builder against a mock SIS that returns the exact
 payload captured live today, writes the files, and then loads **the shipped `index.html`**
@@ -209,6 +211,12 @@ intact; manifest/dated payload/summary totals correct; old day folders pruned.
 * clicking that retry makes a **live** run, asks Apps Script for exactly the 3 missing EMIS
   codes, keeps the 3 snapshot rows, and closes the gap to `done`
 * zero console errors on every path
+
+*Master list:* the published table keeps all rows while the fetch list de-duplicates —
+a school listed under two Wings would lose a Wing from the dropdown if the two were
+confused; with `data/schools.json` present the client builds its dropdowns from it and
+never touches the CSV (a decoy district in the CSV proves it); and `runConnectionCheck`
+names the source actually in use instead of always pointing at the sheet.
 
 The pre-existing 126 client checks still pass with `index.html` changed — including
 `tests/prove-bugs.js`'s button clicks, which now take the fallback path.
@@ -242,9 +250,10 @@ pre-existing and unrelated to this change — it is not part of `npm test`.
    does something. Leave it empty and only the twice-daily province sweep runs.
 4. **Watch the first week** — runtime per sweep, repo growth, and how often the dashboard
    falls back to live (the run log records every fallback).
-5. **Optional** — split the 3.4 MB school-list CSV into per-district JSON so a page load
-   pulls ~160 KB instead; orphan `gh-pages` branch if history growth ever matters; monthly
-   snapshots via the builder's `--month`.
+5. **Optional** — split `data/schools.json` per district so a page load pulls ~160 KB
+   instead of the full list (it is cacheable now, so this is a first-load optimisation
+   only); orphan `gh-pages` branch if history growth ever matters; monthly snapshots via
+   the builder's `--month`.
 
 ---
 

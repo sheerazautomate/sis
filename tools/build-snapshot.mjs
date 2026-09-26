@@ -207,20 +207,50 @@ export function normaliseSchool(o) {
   };
 }
 
-export async function loadSchools(source, { fetchImpl = fetch } = {}) {
-  let text;
+/** Read the master list once; both the fetch pass and schools.json use it. */
+export async function loadSchoolsText(source, { fetchImpl = fetch } = {}) {
   if (/^https?:\/\//i.test(source)) {
     const res = await fetchImpl(source, { redirect: 'follow' });
     if (!res.ok) throw new Error(`school list ${source} returned HTTP ${res.status}`);
-    text = await res.text();
-  } else {
-    text = await fs.readFile(source, 'utf8');
+    return await res.text();
   }
+  return fs.readFile(source, 'utf8');
+}
+
+/**
+ * Schools to FETCH: de-duplicated by EMIS, because the published list repeats
+ * codes and one school only needs one pair of SIS calls.
+ */
+export function schoolsFromText(text) {
   const objs = csvToObjects(text).map(normaliseSchool).filter(Boolean);
-  // De-duplicate by EMIS: the published list repeats codes across wings.
   const seen = new Map();
   for (const s of objs) if (!seen.has(s.emis)) seen.set(s.emis, s);
   return [...seen.values()];
+}
+
+export async function loadSchools(source, opts = {}) {
+  return schoolsFromText(await loadSchoolsText(source, opts));
+}
+
+/**
+ * The master list to PUBLISH, as a compact column table. Deliberately NOT
+ * de-duplicated and NOT normalised: the dashboard's dropdowns are built from
+ * every row, so dropping a duplicate could delete a Wing or Markaz from the
+ * selectors. Values are passed through exactly as the sheet has them.
+ */
+export function schoolsTable(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) return { columns: [], rows: [] };
+  const columns = rows[0].map(h => String(h).trim());
+  return { columns, rows: rows.slice(1).map(r => columns.map((_, i) => String(r[i] === undefined ? '' : r[i]))) };
+}
+
+export async function writeSchools(outDir, text, generatedAt) {
+  const table = schoolsTable(text);
+  await fs.mkdir(outDir, { recursive: true });
+  await fs.writeFile(path.join(outDir, 'schools.json'),
+    JSON.stringify({ schema: 1, generatedAt, source: 'published school list', ...table }));
+  return table;
 }
 
 // ── snapshot ────────────────────────────────────────────────────────────────
@@ -380,7 +410,8 @@ export async function main(argv = process.argv.slice(2)) {
   const markazes     = argAll(argv, 'markaz').map(normKey);
 
   console.log(`[snapshot] school list: ${schoolsSrc}`);
-  let schools = await loadSchools(schoolsSrc);
+  const masterText = await loadSchoolsText(schoolsSrc);
+  let schools = schoolsFromText(masterText);
   console.log(`[snapshot] ${schools.length} unique schools in the master list`);
 
   if (districts.length) schools = schools.filter(s => districts.includes(normKey(s.district)));
@@ -407,6 +438,11 @@ export async function main(argv = process.argv.slice(2)) {
 
   const manifest = await writeSnapshot(outDir, snap, { month });
   console.log(`[snapshot] wrote ${manifest.markazes.length} markaz file(s) + manifest into ${outDir}/`);
+
+  // Publishing the master list too removes the dashboard's last cross-origin
+  // read: it currently pulls a 3.4 MB CSV from docs.google.com on every load.
+  const table = await writeSchools(outDir, masterText, snap.generatedAt);
+  console.log(`[snapshot] wrote schools.json — ${table.rows.length} rows, ${table.columns.length} columns`);
 
   const removed = await pruneDays(outDir, keepDays);
   if (removed.length) console.log(`[snapshot] pruned ${removed.length} old day folder(s): ${removed.join(', ')}`);

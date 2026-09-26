@@ -329,6 +329,74 @@ function makeFakeSis({ failEmis = new Set() } = {}) {
     eq(live.S.run.phase, 'done', 'the gap closed and the run is now complete');
   }
 
+  // ── 11. The master list is published too, and the client prefers it ──────
+  section('11. schools.json replaces the 3.4 MB cross-origin CSV');
+  {
+    // A school listed under two Wings: de-duplicating by EMIS would delete a
+    // row, and with it a Wing from the dropdown. The published list must not.
+    const dupCsv = [
+      'EMIS,School Name,District,Wing,Tehsil,Markaz,Level,Gender',
+      '311000001,GPS One,Layyah,Wing A,Tehsil 1,Markaz M1,Primary,Male',
+      '311000001,GPS One,Layyah,Wing B,Tehsil 1,Markaz M1,Primary,Male',
+      '311000002,GPS Two,Layyah,Wing B,Tehsil 1,Markaz M1,Primary,Female',
+    ].join('\n');
+
+    const table = B.schoolsTable(dupCsv);
+    eq(table.rows.length, 3, 'published list keeps all 3 rows (no de-duplication)');
+    eq(B.schoolsFromText(dupCsv).length, 2, 'the FETCH list de-duplicates to 2 schools');
+    eq(table.columns[1], 'School Name', 'header names preserved');
+    eq(table.rows[1][3], 'Wing B', 'original values preserved verbatim, not normalised');
+
+    await B.writeSchools(path.join(outDir, 'static'), dupCsv, '2026-09-26T09:00:00Z');
+    const published = JSON.parse(fs.readFileSync(path.join(outDir, 'static', 'schools.json'), 'utf8'));
+    eq(published.rows.length, 3, 'schools.json holds all 3 rows');
+
+    // The client must build the same objects from the table as parseCSV does
+    // from the CSV — otherwise the dropdowns and the completeness gate would
+    // disagree depending on which source answered.
+    const env = makeEnv({
+      master: 'EMIS,School Name,District,Wing,Tehsil,Markaz,Level,Gender\n99999999,DECOY,Decoyland,Wing Z,Tehsil Z,Markaz Z,Primary,Male',
+      dataFiles: { 'data/schools.json': published },
+      handler: () => ({ state: 'empty', rows: [] }),
+    });
+    const n = await bootMaster(env);
+    eq(n, 1, 'one district bootstrapped');
+    eq(env.$('selDistrict').options[1].value, 'Layyah', 'the district came from schools.json, NOT the CSV');
+    ok(![...env.$('selDistrict').options].some(o => o.value === 'Decoyland'), 'the CSV decoy was never used');
+    eq(env.S.allRows.length, 3, 'all 3 rows loaded into allRows');
+
+    const wings = env.S.masterRowsFor('Layyah', null, null, null).map(r => r['Wing']);
+    ok(wings.includes('Wing A') && wings.includes('Wing B'), 'both Wings survived — the de-duped list would have lost Wing A');
+    eq(env.gasRequests.length, 0, 'still zero Apps Script requests');
+  }
+
+  // ── 12. Connection check reports which source is actually live ───────────
+  section('12. Connection check names the live source, not a guess');
+  {
+    // Re-read what section 11 wrote, rather than reaching across block scopes.
+    const published = JSON.parse(fs.readFileSync(path.join(outDir, 'static', 'schools.json'), 'utf8'));
+    const withData = makeEnv({
+      master: csv,
+      dataFiles: {
+        'data/manifest.json': manifest,
+        'data/schools.json': published,
+        [`data/${manifest.markazes[0].file}`]: payload,
+      },
+      handler: () => ({ state: 'empty', rows: [] }),
+    });
+    await bootMaster(withData);
+    const rep = await withData.S.runConnectionCheck();
+    ok(/Snapshot data \(same-origin\):\s+OK — 1 Markaz file/.test(rep), 'reports the published snapshot and its Markaz count');
+    ok(/School list \(same-origin\):\s+OK — 3 rows, in use/.test(rep), 'reports the static school list as in use');
+    ok(/School-list CSV \(fallback\)/.test(rep), 'the CSV is labelled a fallback, not the primary source');
+
+    const noData = makeEnv({ master: csv, handler: () => ({ state: 'empty', rows: [] }) });
+    await bootMaster(noData);
+    const rep2 = await noData.S.runConnectionCheck();
+    ok(/none published — the dashboard is reading live from Apps Script/.test(rep2), 'with no snapshot it says so plainly');
+    ok(/not published — falling back to the CSV/.test(rep2), 'and says the CSV is what it is using');
+  }
+
   fs.rmSync(tmp, { recursive: true, force: true });
 
   console.log('\n' + '═'.repeat(64));
