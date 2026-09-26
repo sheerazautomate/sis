@@ -62,8 +62,11 @@ function slimmed(req, out) {
  *                browser does when the response arrives without
  *                Access-Control-Allow-Origin ("Cross-Origin Request Blocked")
  *   jsonpBlocked the CORS-free <script> channel fails as well
+ *   dataFiles    static snapshot files served same-origin from data/, keyed by
+ *                path (e.g. 'data/manifest.json'). Omit to simulate a
+ *                repository with no published snapshots.
  */
-function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked = false }) {
+function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked = false, dataFiles = null }) {
   const downloads = [];
   const gasRequests = [];
   const consoleErrors = [];
@@ -158,6 +161,16 @@ function makeEnv({ master, handler, htmlPath, corsBlocked = false, jsonpBlocked 
           if (out.__status) return resp({ body: out.__body || '', status: out.__status });
           if (out.__raw !== undefined) return resp({ body: out.__raw });
           return resp({ body: JSON.stringify(slimmed(req, out)) });
+        }
+
+        // Static snapshots: relative, same-origin files — exactly what GitHub
+        // Pages serves from data/ in this repository.
+        if (dataFiles) {
+          const key = u.pathname.replace(/^\//, '');
+          if (Object.prototype.hasOwnProperty.call(dataFiles, key)) {
+            const v = dataFiles[key];
+            return resp({ body: typeof v === 'string' ? v : JSON.stringify(v) });
+          }
         }
 
         return resp({ body: '', status: 404 });

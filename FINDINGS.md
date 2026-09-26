@@ -2,8 +2,17 @@
 
 Everything below was verified against `index.html` at commit `e8ba177` (the
 pre-fix version) and re-verified against the rebuilt file by
-`node tests/suite.js` (126 checks), `node tests/server-suite.js` (94) and
-`node tests/server-contract.js` (26).
+`node tests/suite.js` (126 checks), `node tests/server-suite.js` (94),
+`node tests/server-contract.js` (26) and `node tests/snapshot-suite.js` (114).
+
+> **This document describes the Apps Script transport and everything that can
+> go wrong with it.** As of 2026-09-25 there is a second, preferred read path
+> that avoids that whole class of failure — see **[`PLAN.md`](PLAN.md)**. In
+> short: a scheduled job pulls attendance straight from `sis.pesrp.edu.pk` and
+> commits it as JSON into this repository, which GitHub Pages serves from the
+> *same origin* as the dashboard, so a snapshot read cannot be
+> "Cross-Origin Request Blocked". The dashboard reads the snapshot first and
+> falls back to the Apps Script path documented here automatically.
 
 ---
 
@@ -361,10 +370,12 @@ name is validated against a plain identifier/dotted-path pattern and is *never*
 echoed raw, so `?callback=alert(1)//` is ignored. Without `callback` the
 response is byte-for-byte what it was before — the old dashboard is unaffected.
 
-> **You must re-deploy `server/Code.gs` as a new web-app version for the
-> fallback to help you.** Until then the JSONP probe fails and the check tells
-> you exactly that (the deployed build today is `3.0.0`, i.e. the version before
-> this change).
+> **Status 2026-09-25: the deployed build already supports it.** Probing
+> `?action=health&callback=probe_cb_test` returns
+> `probe_cb_test({"version":"3.0.0",…});`, so the CORS-free channel is live and
+> the "re-deploy `Code.gs`" warning no longer applies. Note that the version
+> string still reads `3.0.0` even though the JSONP wrapper is deployed — it is
+> not a reliable indicator of which build is running.
 
 Covered by tests: the client suite makes `fetch` throw a CORS `TypeError` on
 every Apps Script call and asserts the run still completes over JSONP, that the

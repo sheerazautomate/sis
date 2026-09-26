@@ -4,7 +4,9 @@
   "private": true,
   "description": "PESRP Attendance Dashboard - client plus Apps Script backend for Punjab school attendance",
   "scripts": {
-    "test": "node tests/suite.js && node tests/server-suite.js && node tests/server-contract.js",
+    "test": "node tests/suite.js && node tests/server-suite.js && node tests/server-contract.js && node tests/snapshot-suite.js",
+    "test:snapshot": "node tests/snapshot-suite.js",
+    "snapshot": "node tools/build-snapshot.mjs",
     "test:client": "node tests/suite.js",
     "test:server": "node tests/server-suite.js",
     "test:contract": "node tests/server-contract.js",
