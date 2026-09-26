@@ -397,6 +397,81 @@ function makeFakeSis({ failEmis = new Set() } = {}) {
     ok(/not published — falling back to the CSV/.test(rep2), 'and says the CSV is what it is using');
   }
 
+  // ── 13. The shipped CLI, end to end, writing real files ──────────────────
+  // Everything above calls the builder's functions. This drives main() — the
+  // actual entry point the workflow runs — with only the network stubbed.
+  section('13. main() as the workflow invokes it');
+  {
+    const cliCsv = path.join(tmp, 'cli-schools.csv');
+    const rows = [['EMIS', 'School Name', 'District', 'Wing', 'Tehsil', 'Markaz', 'Level', 'Gender']];
+    // Two Markazes, so grouping and the manifest are exercised.
+    for (let i = 1; i <= 8; i++) {
+      rows.push(['3110' + String(i).padStart(5, '0'), `GPS No ${i}`, 'Layyah', 'Wing A', 'Tehsil 1',
+                 i <= 5 ? 'Markaz M1' : 'Markaz M2', 'Primary', i % 2 ? 'Male' : 'Female']);
+    }
+    fs.writeFileSync(cliCsv, toCSVText(rows));
+
+    const cliOut = path.join(tmp, 'cli-data');
+    const realFetch = globalThis.fetch;
+    let sisCalls = 0;
+    globalThis.fetch = async (url) => {
+      const u = new URL(url);
+      if (u.host !== 'sis.pesrp.edu.pk') throw new Error('unexpected host ' + u.host);
+      sisCalls++;
+      const kind = u.pathname.includes('teachers') ? 't' : 's';
+      return { ok: true, status: 200,
+               text: async () => (kind === 's' ? LIVE_SHAPE(40, 5, 45) : LIVE_SHAPE(3, 1, 4)) };
+    };
+
+    let snap;
+    try {
+      snap = await B.main(['--schools', cliCsv, '--out', cliOut,
+                           '--concurrency', '3', '--delay-ms', '0', '--retries', '2']);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+
+    eq(snap.stats.ok, 8, 'all 8 schools fetched through main()');
+    eq(sisCalls, 16, 'main() made exactly 2 SIS calls per school');
+
+    const man3 = JSON.parse(fs.readFileSync(path.join(cliOut, 'manifest.json'), 'utf8'));
+    eq(man3.markazes.length, 2, 'main() grouped the schools into 2 Markaz files');
+    eq(man3.markazes[0].schools + man3.markazes[1].schools, 8, 'and every school landed in one of them');
+    ok(man3.markazes.every(m => fs.existsSync(path.join(cliOut, m.file))), 'every manifest entry points at a file that exists');
+
+    const day = man3.day;
+    ok(fs.existsSync(path.join(cliOut, 'days', day, 'summary.json')), 'summary.json written for the run day');
+    const schoolsJson = JSON.parse(fs.readFileSync(path.join(cliOut, 'schools.json'), 'utf8'));
+    eq(schoolsJson.rows.length, 8, 'main() published the school list too');
+    eq(schoolsJson.columns[0], 'EMIS', 'with the original header names');
+
+    // The published list must feed the client unchanged. Note the case
+    // mismatch this deliberately exercises: the builder upper-cases Markaz
+    // names, the school list keeps the sheet's own spelling. The dropdown
+    // offers "Markaz M1"; the manifest keys it "MARKAZ M1". findSnapshotEntry
+    // has to bridge that or the snapshot is never found.
+    const first = man3.markazes[0];
+    const markazCol = schoolsJson.columns.indexOf('Markaz');
+    const asPublished = schoolsJson.rows.find(r => r[0] === '311000001')[markazCol];
+    ok(first.markaz !== asPublished && first.markaz.toUpperCase() === asPublished.toUpperCase(),
+       `the mismatch is real: dropdown offers "${asPublished}", manifest keys "${first.markaz}"`);
+
+    const env = makeEnv({
+      master: 'EMIS,School Name,District\n0,DECOY,Decoyland',
+      dataFiles: { 'data/schools.json': schoolsJson, 'data/manifest.json': man3,
+                   [`data/${first.file}`]: JSON.parse(fs.readFileSync(path.join(cliOut, first.file), 'utf8')) },
+      handler: () => ({ state: 'empty', rows: [] }),
+    });
+    await bootMaster(env);
+    await selectPath(env, { district: 'Layyah', wing: 'Wing A', tehsil: 'Tehsil 1', markaz: asPublished });
+    ok(!env.$('btnFetch').disabled, 'the Markaz from the published list enabled Fetch');
+    env.$('btnFetch').dispatchEvent(new env.window.Event('click'));
+    for (let i = 0; i < 400 && (!env.S.run || /triggering|polling/.test(env.S.run.phase)); i++) await tick(2);
+    eq(env.S.run.phase, 'done', 'the CLI\'s own output drives the dashboard to DONE');
+    eq(env.S.run.store.size, first.schools, 'with every school that Markaz file contains');
+    eq(env.gasRequests.length, 0, 'and still zero Apps Script requests');
+  }
+
   fs.rmSync(tmp, { recursive: true, force: true });
 
   console.log('\n' + '═'.repeat(64));
