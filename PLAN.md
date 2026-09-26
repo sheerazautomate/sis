@@ -94,7 +94,7 @@ fallback already handles it.
 | File | Change |
 |---|---|
 | `tools/build-snapshot.mjs` | **New, written.** Fetches SIS, writes `data/`. |
-| `deploy/sis-snapshot.yml` | **New, written.** Two-tier cron + manual dispatch, commits `data/`. Must be copied to `.github/workflows/` — see the warning below. |
+| `.github/workflows/sis-snapshot.yml` | **Installed on `main`.** Two-tier cron + manual dispatch, commits `data/`. |
 | `config/hot-markaz.txt` | **New, written.** The Markazes the 30-minute tick refreshes. Ships empty. |
 | `data/manifest.json` | Generated. The only file whose name the client must know. |
 | `data/days/<YYYY-MM-DD>/<district>-<markaz>.json` | Generated. One file per Markaz per day. |
@@ -255,12 +255,12 @@ pre-existing and unrelated to this change — it is not part of `npm test`.
 
 1. **Done** — builder + workflow written, tested offline; client is snapshot-first with a
    live fallback.
-2. **Install the workflow** — copy `deploy/sis-snapshot.yml` to
-   `.github/workflows/sis-snapshot.yml` on `main`. This one step cannot be automated from
-   here: pushing it was **rejected** with *"refusing to allow a GitHub App to create or
-   update workflow `.github/workflows/sis-snapshot.yml` without `workflows` permission"*.
-   A person can add it through the web UI in about a minute. Until it exists nothing is
-   scheduled, and the dashboard keeps using the live Apps Script path automatically.
+2. **Done — the workflow is installed** at `.github/workflows/sis-snapshot.yml` on `main`
+   (added by hand, because pushing it from here was **rejected** with *"refusing to allow a
+   GitHub App to create or update workflow … without `workflows` permission"*). Verified
+   after the fact: registered as `SIS snapshot [active]`, and the pasted file is
+   byte-identical to the one this repo's tests validated. The `deploy/` staging copy was
+   then deleted so there is only one copy to drift.
 3. **First real run** — `workflow_dispatch` with `mode: custom`, `district: LAYYAH`,
    `dry_run: true`. That single run proves runner→SIS reachability and prints the true
    school/Markaz counts. Then repeat without `dry_run` and load

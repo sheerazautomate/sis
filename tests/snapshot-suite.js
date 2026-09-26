@@ -472,6 +472,59 @@ function makeFakeSis({ failEmis = new Set() } = {}) {
     eq(env.gasRequests.length, 0, 'and still zero Apps Script requests');
   }
 
+  // ── 14. The school-list download: the first thing every run does ─────────
+  // It is a ~3.4 MB fetch with no per-school retry to hide behind, so a blip
+  // here used to kill the entire sweep. It now retries, and refuses bodies
+  // that are not actually the school list.
+  section('14. loadSchoolsText retries and validates');
+  {
+    const goodCsv = 'EMIS,School Name,District,Markaz\n1,A,D,M\n2,B,D,M\n';
+    const fast = { retries: 3, backoffMs: 1 };
+
+    // (a) blips twice, then succeeds — the run must survive it
+    let tries = 0;
+    const flaky = async () => {
+      tries++;
+      if (tries < 3) throw new Error('socket hang up');
+      return { ok: true, status: 200, text: async () => goodCsv };
+    };
+    const got = await B.loadSchoolsText('https://example.test/list.csv', { fetchImpl: flaky, ...fast });
+    eq(tries, 3, 'retried through two failures');
+    eq(B.schoolsFromText(got).length, 2, 'and still parsed the real list afterwards');
+
+    // (b) an HTML error page served as 200 must be refused, not published
+    let htmlTries = 0;
+    const htmlPage = async () => {
+      htmlTries++;
+      return { ok: true, status: 200, text: async () => '<!DOCTYPE html><html><body>Service unavailable</body></html>' };
+    };
+    let threw = null;
+    try { await B.loadSchoolsText('https://example.test/list.csv', { fetchImpl: htmlPage, ...fast }); }
+    catch (e) { threw = e; }
+    ok(threw && /HTML page, not CSV/.test(threw.message), 'refuses an HTML page delivered with status 200');
+    eq(htmlTries, 3, 'it retried before giving up');
+
+    // (c) a CSV that is not the school list (no EMIS column) must be refused
+    const wrongCols = async () => ({ ok: true, status: 200, text: async () => 'Name,Region\nX,Y\n' });
+    threw = null;
+    try { await B.loadSchoolsText('https://example.test/list.csv', { fetchImpl: wrongCols, ...fast }); }
+    catch (e) { threw = e; }
+    ok(threw && /no EMIS column/.test(threw.message), 'refuses a CSV without an EMIS column');
+
+    // (d) exhausted retries report the real reason, not a vague failure
+    const alwaysDown = async () => { throw new Error('ENOTFOUND docs.google.com'); };
+    threw = null;
+    try { await B.loadSchoolsText('https://example.test/list.csv', { fetchImpl: alwaysDown, ...fast }); }
+    catch (e) { threw = e; }
+    ok(threw && /after 3 attempts/.test(threw.message) && /ENOTFOUND/.test(threw.message),
+       'exhausted retries name the attempt count and the underlying error');
+
+    // (e) a local file path must bypass all of this
+    const localPath = path.join(tmp, 'local-list.csv');
+    fs.writeFileSync(localPath, goodCsv);
+    eq((await B.loadSchoolsText(localPath)).length, goodCsv.length, 'a local path is read directly, no fetch');
+  }
+
   fs.rmSync(tmp, { recursive: true, force: true });
 
   console.log('\n' + '═'.repeat(64));
