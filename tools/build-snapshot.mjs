@@ -207,14 +207,42 @@ export function normaliseSchool(o) {
   };
 }
 
-/** Read the master list once; both the fetch pass and schools.json use it. */
-export async function loadSchoolsText(source, { fetchImpl = fetch } = {}) {
-  if (/^https?:\/\//i.test(source)) {
-    const res = await fetchImpl(source, { redirect: 'follow' });
-    if (!res.ok) throw new Error(`school list ${source} returned HTTP ${res.status}`);
-    return await res.text();
+/**
+ * Read the master list once; both the fetch pass and schools.json use it.
+ *
+ * This is a ~3.4 MB download and the FIRST thing every run does — a single
+ * transient blip here would kill the whole sweep before it fetched one school.
+ * So it gets the same bounded retry + timeout discipline as getJson(), plus a
+ * sanity check that the body actually looks like the school list rather than an
+ * HTML error page served with status 200.
+ */
+export async function loadSchoolsText(source, { fetchImpl = fetch, retries = 3, backoffMs = 800, timeoutMs = 60000 } = {}) {
+  if (!/^https?:\/\//i.test(source)) return fs.readFile(source, 'utf8');
+
+  let lastErr = null;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetchImpl(source, { signal: ctrl.signal, redirect: 'follow' });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!text || !text.trim()) throw new Error('empty body');
+      // A login/error page arrives as 200 + HTML; the real list is CSV with an
+      // EMIS column. Reject it here rather than publishing an empty snapshot.
+      const head = text.slice(0, 4000).toLowerCase();
+      if (head.includes('<html') || head.includes('<!doctype')) throw new Error('got an HTML page, not CSV');
+      if (!/emis/.test(head)) throw new Error('no EMIS column in the header');
+      return text;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < retries) await sleep(backoffMs * attempt);
+    } finally {
+      clearTimeout(timer);
+    }
   }
-  return fs.readFile(source, 'utf8');
+  throw new Error(`school list ${source} failed after ${retries} attempts: `
+    + String((lastErr && lastErr.message) || lastErr || 'unknown'));
 }
 
 /**
