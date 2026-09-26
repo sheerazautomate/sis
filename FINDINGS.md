@@ -2,8 +2,17 @@
 
 Everything below was verified against `index.html` at commit `e8ba177` (the
 pre-fix version) and re-verified against the rebuilt file by
-`node tests/suite.js` (126 checks), `node tests/server-suite.js` (94) and
-`node tests/server-contract.js` (26).
+`node tests/suite.js` (126 checks), `node tests/server-suite.js` (94),
+`node tests/server-contract.js` (26) and `node tests/snapshot-suite.js` (114).
+
+> **This document describes the Apps Script transport and everything that can
+> go wrong with it.** As of 2026-09-25 there is a second, preferred read path
+> that avoids that whole class of failure — see **[`PLAN.md`](PLAN.md)**. In
+> short: a scheduled job pulls attendance straight from `sis.pesrp.edu.pk` and
+> commits it as JSON into this repository, which GitHub Pages serves from the
+> *same origin* as the dashboard, so a snapshot read cannot be
+> "Cross-Origin Request Blocked". The dashboard reads the snapshot first and
+> falls back to the Apps Script path documented here automatically.
 
 ---
 
