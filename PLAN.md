@@ -94,7 +94,7 @@ fallback already handles it.
 | File | Change |
 |---|---|
 | `tools/build-snapshot.mjs` | **New, written.** Fetches SIS, writes `data/`. |
-| `.github/workflows/sis-snapshot.yml` | **New, written.** Two-tier cron + manual dispatch, commits `data/`. |
+| `deploy/sis-snapshot.yml` | **New, written.** Two-tier cron + manual dispatch, commits `data/`. Must be copied to `.github/workflows/` — see the warning below. |
 | `config/hot-markaz.txt` | **New, written.** The Markazes the 30-minute tick refreshes. Ships empty. |
 | `data/manifest.json` | Generated. The only file whose name the client must know. |
 | `data/days/<YYYY-MM-DD>/<district>-<markaz>.json` | Generated. One file per Markaz per day. |
@@ -242,15 +242,21 @@ pre-existing and unrelated to this change — it is not part of `npm test`.
 
 1. **Done** — builder + workflow written, tested offline; client is snapshot-first with a
    live fallback.
-2. **First real run** — merge to `main`, then `workflow_dispatch` with `mode: custom`,
-   `district: LAYYAH`, `dry_run: true`. That single run proves runner→SIS reachability and
-   prints the true school/Markaz counts. Then repeat without `dry_run` and load
+2. **Install the workflow** — copy `deploy/sis-snapshot.yml` to
+   `.github/workflows/sis-snapshot.yml` on `main`. This one step cannot be automated from
+   here: pushing it was **rejected** with *"refusing to allow a GitHub App to create or
+   update workflow `.github/workflows/sis-snapshot.yml` without `workflows` permission"*.
+   A person can add it through the web UI in about a minute. Until it exists nothing is
+   scheduled, and the dashboard keeps using the live Apps Script path automatically.
+3. **First real run** — `workflow_dispatch` with `mode: custom`, `district: LAYYAH`,
+   `dry_run: true`. That single run proves runner→SIS reachability and prints the true
+   school/Markaz counts. Then repeat without `dry_run` and load
    `https://sheerazautomate.github.io/sis/`.
-3. **Fill in `config/hot-markaz.txt`** with the Markazes you watch, so the 30-minute tick
+4. **Fill in `config/hot-markaz.txt`** with the Markazes you watch, so the 30-minute tick
    does something. Leave it empty and only the twice-daily province sweep runs.
-4. **Watch the first week** — runtime per sweep, repo growth, and how often the dashboard
+5. **Watch the first week** — runtime per sweep, repo growth, and how often the dashboard
    falls back to live (the run log records every fallback).
-5. **Optional** — split `data/schools.json` per district so a page load pulls ~160 KB
+6. **Optional** — split `data/schools.json` per district so a page load pulls ~160 KB
    instead of the full list (it is cacheable now, so this is a first-load optimisation
    only); orphan `gh-pages` branch if history growth ever matters; monthly snapshots via
    the builder's `--month`.

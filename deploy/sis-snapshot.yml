@@ -1,5 +1,16 @@
 name: SIS snapshot
 
+# ════════════════════════════════════════════════════════════════════════════
+# ⚠ THIS FILE HAS TO BE COPIED TO  .github/workflows/sis-snapshot.yml  TO RUN.
+# It lives in deploy/ because the GitHub App used here is not allowed to create
+# files under .github/workflows/ ("refusing to allow a GitHub App to create or
+# update workflow … without `workflows` permission"). A person can add it:
+#   repo → Add file → Create new file → name it .github/workflows/sis-snapshot.yml
+#   → paste this file → commit to main.
+# Until it is there, nothing is scheduled and the dashboard simply keeps using
+# the live Apps Script path (that fallback is automatic).
+# ════════════════════════════════════════════════════════════════════════════
+
 # Pulls attendance from sis.pesrp.edu.pk and commits it as static JSON under
 # data/. GitHub Pages then serves those files from the SAME ORIGIN as the
 # dashboard (https://sheerazautomate.github.io/sis/data/…), so a snapshot read
