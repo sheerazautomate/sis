@@ -1,0 +1,16 @@
+# Markazes refreshed on the fast 30-minute tick.
+# ════════════════════════════════════════════════════════════════════════════
+# The province-wide sweep runs twice a day (11:00 and 15:05 PKT) and covers
+# every Markaz. This list is for the ones you watch during the school day, so
+# they are at most half an hour stale instead of a few hours.
+#
+# One Markaz name per line, matching the Markaz column of the school list
+# exactly. Lines starting with # are ignored. Blank file = the 30-minute tick
+# does nothing, which is the safe default: no list, no extra load on SIS.
+#
+# A Markaz costs roughly (schools × 2) SIS requests. A 15-school primary Markaz
+# is ~30 requests; a 120-school secondary Markaz is ~240.
+#
+# Example:
+#   MARKAZ LAYYAH A
+#   MARKAZ MULTAN B

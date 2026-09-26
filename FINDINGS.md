@@ -361,10 +361,12 @@ name is validated against a plain identifier/dotted-path pattern and is *never*
 echoed raw, so `?callback=alert(1)//` is ignored. Without `callback` the
 response is byte-for-byte what it was before — the old dashboard is unaffected.
 
-> **You must re-deploy `server/Code.gs` as a new web-app version for the
-> fallback to help you.** Until then the JSONP probe fails and the check tells
-> you exactly that (the deployed build today is `3.0.0`, i.e. the version before
-> this change).
+> **Status 2026-09-25: the deployed build already supports it.** Probing
+> `?action=health&callback=probe_cb_test` returns
+> `probe_cb_test({"version":"3.0.0",…});`, so the CORS-free channel is live and
+> the "re-deploy `Code.gs`" warning no longer applies. Note that the version
+> string still reads `3.0.0` even though the JSONP wrapper is deployed — it is
+> not a reliable indicator of which build is running.
 
 Covered by tests: the client suite makes `fetch` throw a CORS `TypeError` on
 every Apps Script call and asserts the run still completes over JSONP, that the
