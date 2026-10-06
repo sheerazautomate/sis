@@ -1669,47 +1669,6 @@ document.querySelectorAll('[data-quickexport]').forEach(b => {
   b.addEventListener('click', () => exportReport(b.dataset.quickexport));
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-//  SCHOOL LIST — the published CSV. A cross-origin GET with no CORS header
-//  (revoked publication, wrong gid, an error page) shows up in the console as
-//  "Cross-Origin Request Blocked" too, so it gets the same treatment.
-// ════════════════════════════════════════════════════════════════════════════
-async function csvFetchOnce(url, timeoutMs) {
-  const sep = url.includes('?') ? '&' : '?';
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs || CFG.probeTimeoutMs);
-  try {
-    const resp = await fetch(`${url}${sep}_=${Date.now()}`, { cache: 'no-store', signal: ctrl.signal });
-    if (!resp.ok) return { ok: false, kind: 'http', status: resp.status, url };
-    const text = await resp.text();
-    if (!text.trim()) return { ok: false, kind: 'empty', url };
-    return { ok: true, text, url };
-  } catch (e) {
-    const timedOut = e && e.name === 'AbortError';
-    return { ok: false, kind: timedOut ? 'timeout' : 'network', blocked: !timedOut, error: e && e.message, url };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Turn the published column table back into the same header-keyed objects
- * parseCSV() produces, so every consumer (dropdowns, masterRowsFor, the
- * completeness gate) sees one shape whichever source supplied the list.
- */
-function tableToRows(table) {
-  if (!table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) return null;
-  const headers = table.columns.map(h => String(h).trim());
-  if (!headers.length) return null;
-  return table.rows
-    .filter(r => Array.isArray(r) && r.some(c => String(c).trim() !== ''))
-    .map(r => {
-      const o = {};
-      headers.forEach((h, i) => { o[h] = String(r[i] === undefined ? '' : r[i]).trim(); });
-      return o;
-    });
-}
-
 /**
  * The master list from this repository, same-origin. Preferred over the
  * published sheet: it is cacheable (the CSV is fetched with no-store and a
@@ -1734,15 +1693,11 @@ async function loadMasterList() {
     + 'Press Connection check for a per-endpoint report.');
   return false;
 }
-```
-You can also delete `csvFetchOnce` now — it was only used by the CSV
-fallback and by the old Connection check (replaced next).
 
-## 12. Rewrite the Connection check
-
-Replace the whole `runConnectionCheck` function with:
-
-```js
+// ════════════════════════════════════════════════════════════════════════════
+//  CONNECTION CHECK — answers "which URL is actually blocked, and why?" without
+//  making the user read the browser console.
+// ════════════════════════════════════════════════════════════════════════════
 async function runConnectionCheck() {
   const lines = [];
   lines.push(`Page origin:  ${location.origin || location.href}`);
@@ -1790,83 +1745,7 @@ async function runConnectionCheck() {
   console.warn('[SIS] connection check\n' + report);
   showError('Connection check', report);
   return report;
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-//  CONNECTION CHECK — answers "which URL is actually blocked, and why?" without
-//  making the user read the browser console.
-// ════════════════════════════════════════════════════════════════════════════
-async function runConnectionCheck() {
-  const lines = [];
-  lines.push(`Page origin:  ${location.origin || location.href}`);
-  lines.push(`Apps Script:  ${GAS_URL}`);
-  lines.push(`School list:  ${CSV_URL}`);
-  lines.push('');
-
-  const f = await gasFetch({ action: 'health', _: Date.now() }, CFG.probeTimeoutMs);
-  lines.push(f.ok
-    ? `1. Apps Script via fetch (CORS):   OK — ${JSON.stringify(f.data)}`
-    : `1. Apps Script via fetch (CORS):   FAILED — ${f.kind}${f.error ? ' — ' + f.error : ''}`);
-
-  const j = await gasJsonp({ action: 'health', _: Date.now() }, CFG.jsonpTimeoutMs);
-  lines.push(j.ok
-    ? `2. Apps Script via JSONP (no CORS): OK — ${JSON.stringify(j.data)}`
-    : `2. Apps Script via JSONP (no CORS): FAILED — ${j.kind}${j.error ? ' — ' + j.error : ''}`);
-
-  // Same-origin snapshot data published into this repository. When present it is
-  // what the dashboard actually reads, so the two lines below say which source
-  // is live rather than leaving you to guess.
-  const man = await getManifest(true);
-  lines.push(man
-    ? `3. Snapshot data (same-origin):     OK — ${man.markazes.length} Markaz file(s), generated ${fmtGenerated(man.generatedAt) || 'unknown'}`
-    : `3. Snapshot data (same-origin):     none published — the dashboard is reading live from Apps Script`);
-
-  const staticList = await fetchJson(`${DATA_BASE}schools.json`, CFG.probeTimeoutMs);
-  const staticRows = staticList.ok ? (tableToRows(staticList.data) || []).length : 0;
-  lines.push(staticList.ok
-    ? `4. School list (same-origin):       OK — ${staticRows} rows, in use`
-    : `4. School list (same-origin):       not published — falling back to the CSV below`);
-
-  const c = await csvFetchOnce(CSV_URL, CFG.probeTimeoutMs);
-  let csvRows = 0;
-  if (c.ok) { try { csvRows = parseCSV(c.text).length; } catch (e) { csvRows = 0; } }
-  lines.push(c.ok
-    ? `5. School-list CSV (fallback):      OK — ${csvRows} rows, ${c.text.length} bytes`
-    : `5. School-list CSV (fallback):      FAILED — ${c.kind}${c.status ? ' ' + c.status : ''}${c.error ? ' — ' + c.error : ''}`);
-
-  lines.push('');
-  if (f.ok && j.ok) {
-    lines.push('Verdict: both channels work. A CORS block would be intermittent — it usually hits the'
-      + ' long/heavy calls (a big secondary-wing Markaz), which is exactly when Google may answer'
-      + ' without the CORS header. The dashboard retries those over JSONP automatically.');
-  } else if (!f.ok && j.ok) {
-    lines.push('Verdict: fetch() is CORS-blocked but the CORS-free channel works — the dashboard is using'
-      + ' it now, so fetches will still complete. That block is Google-side (see the Causes list below).');
-  } else if (f.ok && !j.ok) {
-    lines.push('Verdict: fetch() works, the CORS-free channel does not. Usually that means the deployed'
-      + ' Apps Script predates server/Code.gs in this repo (no ?callback= support) — re-deploy it so the'
-      + ' fallback is available when fetch() does get blocked.');
-  } else {
-    lines.push('Verdict: the Apps Script endpoint does not answer from this browser at all.'
-      + ' Check: (a) Deploy → Manage deployments → the web app\'s "Who has access" must be "Anyone"'
-      + ' (not "Anyone with Google account" — that redirects to a login page, which the browser reports'
-      + ' as CORS); (b) the URL is the current deployment; (c) no VPN/proxy/extension is blocking'
-      + ' script.google.com.');
-  }
-  lines.push('');
-  lines.push('Causes of "Cross-Origin Request Blocked" on a static dashboard, in order of likelihood:');
-  lines.push('  • a failed/killed Apps Script execution or a quota stop → HTML error page with no CORS header');
-  lines.push('  • the web app is not deployed with access "Anyone"');
-  lines.push('  • the deployed server does not support ?callback=, so the JSONP retry cannot work');
-  lines.push('  • the published school-list CSV was unpublished, or its gid changed');
-
-  const report = lines.join('\n');
-  console.warn('[SIS] connection check\n' + report);
-  showError('Connection check', report);
-  return report;
-}
-
-// ════════════════════════════════════════════════════════════════════════════
+}// ════════════════════════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════════════════════════
 (async function init() {
