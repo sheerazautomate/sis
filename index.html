@@ -472,38 +472,15 @@ const RELAY_URL = "https://sisrelay.vercel.app/api";
 const DATA_BASE = "data/";
 
 const CFG = {
-  // Polling: self-scheduling (never overlapping) with a growing interval.
-  pollStartMs:  1500,
-  pollMaxMs:    6000,
-  pollStepMs:   150,
-  pollJitter:   0.2,
-  pollTimeoutMs: 10000,
-  maxPolls:     260,
-
-  // Trigger: awaited with a timeout, retried on hard failure.
-  triggerTimeoutMs: 20000,
-  triggerRetries:   3,
-
-  // Completeness / resume
-  maxRounds:      3,     // initial attempt + up to 2 resume rounds
-  roundGateMs:    4000,  // ignore a "done" this soon after a resume trigger
-  resumeGracePolls: 4,   // polls to let a resume trigger take effect before judging it
-  stallPolls:     6,     // consecutive polls with no progress => poke the server
-  maxNetErrors:   6,     // consecutive transport failures => give up
+  pollTimeoutMs:  10000,  // per-request budget when reading a snapshot/manifest file
+  probeTimeoutMs: 8000,   // per-endpoint budget for the Connection check
   runDeadlineMs:  8 * 60 * 1000,
 
-  // School-list CSV
-  csvRetries:     3,
-
-  // Transport
-  jsonpTimeoutMs: 15000, // CORS-free fallback channel (script tag) budget
-  probeTimeoutMs: 8000,  // per-endpoint budget for the Connection check
-  //New Code from Claude
   // Live trigger + poll (Vercel relay → GitHub Actions → static JSON).
   // There's no chunking/resume state to manage here the way there was with
   // Apps Script: the Node runner either finishes a Markaz or marks a
   // school's row status "error" — one poll loop, no rounds.
-  triggerTimeoutMs:  15000,
+  triggerTimeoutMs:   15000,
   liveTriggerRetries: 2,
   livePollStartMs:    4000,
   livePollMaxMs:      15000,
@@ -834,22 +811,6 @@ function logRun(r, msg) {
 function isStale(r) { return !r || r.gen !== generation || r.phase === 'cancelled'; }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  HTTP — two transports, because a plain fetch() is not always allowed to
-//  read the answer.
-//
-//  1. gasFetch()  — the normal CORS request. Google serves Apps Script JSON
-//     with `Access-Control-Allow-Origin: *`, so this is the fast path.
-//  2. gasJsonp()  — the same request sent as a <script> tag. Script tags are
-//     not subject to CORS at all. When Google answers without the CORS header
-//     — a failed/killed execution or a quota stop returns an HTML error page,
-//     and a big secondary-wing response can trip the same edge — the browser
-//     refuses to hand the bytes to fetch() and the console shows
-//     "Cross-Origin Request Blocked". JSONP still reads the payload.
-//     Needs the server to honour ?callback= (server/Code.gs does).
-//
-//  gasGet() tries fetch() first, then JSONP, then stays on whichever one
-//  answered so a blocked channel is not paid for on every single poll.
-// ════════════════════════════════════════════════════════════════════════════
 //  LIVE FETCH — the relay triggers a GitHub Actions run, which commits a
 //  fresh snapshot JSON. We then just poll that same-origin file until it is
 //  newer than our trigger time. No CORS, no Apps Script, no chunking/resume:
@@ -1166,79 +1127,6 @@ function coverageText(r) {
 }
 
 function runHasData(r) { return r.store.size > 0; }
-
-function handleDone(r) {
-  // Guard against a "done" that arrives instantly from a *previous* run's cache.
-  if (Date.now() < r.roundGateUntil) {
-    setStreamMsg('Server says done, but that looks like the previous run — verifying…');
-    return false;
-  }
-
-  const missing = missingList(r);
-
-  // No master list => we cannot verify completeness. Accept, but say so.
-  if (!r.expected.size) {
-    finishRun(r, r.store.size ? 'done' : 'error', r.store.size
-      ? { title: 'Complete (unverified).', detail: 'The school master list is unavailable, so completeness could not be checked.' }
-      : { title: 'Fetch completed but no data was returned.', detail: 'Check the Apps Script execution log.' });
-    return true;
-  }
-
-  if (missing.length === 0) {
-    finishRun(r, 'done', null);
-    return true;
-  }
-
-  // A resume trigger is already in flight — give the server time to act on it
-  // before deciding whether the round made any progress.
-  if (r.pendingResume && r.resumePolls < CFG.resumeGracePolls) {
-    setStreamMsg(`Waiting for the server to return ${missing.length} requested school(s)…`);
-    return false;
-  }
-  r.pendingResume = false;
-
-  // A snapshot is a fixed artefact — asking for the same file again cannot add
-  // schools. Report the gap and point at the live fetch instead of "resuming".
-  if (r.source === 'snapshot') {
-    finishRun(r, runHasData(r) ? 'partial' : 'error', {
-      title: runHasData(r)
-        ? `The published snapshot is missing ${missing.length} of ${r.expected.size} school(s).`
-        : 'The published snapshot for this Markaz has no usable rows.',
-      detail: `${coverageText(r)}. Snapshots are written by a scheduled job, so a gap usually means the `
-            + 'school list changed after the last run. Use "Retry missing" below (or ⟳ Live) to fetch '
-            + 'those schools from Apps Script now — what you already have is kept.',
-    });
-    return true;
-  }
-
-  // Incomplete. Auto-resume while we still have rounds and are making progress.
-  const madeProgress = r.lastMissingCount < 0 || missing.length < r.lastMissingCount;
-  if (r.round < CFG.maxRounds && madeProgress) {
-    r.lastMissingCount = missing.length;
-    r.round++;
-    r.roundGateUntil = Date.now() + CFG.roundGateMs;
-    r.pendingResume = true;
-    r.resumePolls = 0;
-    r.storeAtResume = r.store.size;
-    r.polls = Math.max(0, r.polls - 40);   // give the new round some polling budget
-    logRun(r, `incomplete (${missing.length} missing) — auto-resuming, round ${r.round}`);
-    showProgress(Math.round((coveredCount(r) / r.expected.size) * 100),
-                 `${missing.length} school(s) still missing — auto-retrying…`);
-    setStreamMsg(`Round ${r.round}/${CFG.maxRounds} · re-requesting ${missing.length} missing school(s)`);
-    renderAll();
-    // Fire the resume trigger without blocking the poll loop.
-    triggerFetch(r, missing.map(m => m.emis));
-    return false;
-  }
-
-  finishRun(r, runHasData(r) ? 'partial' : 'error', {
-    title: `${missing.length} of ${r.expected.size} school(s) did not come back.`,
-    detail: `${coverageText(r)} after ${r.round} round(s). ` +
-            (madeProgress ? '' : 'The last retry returned the same set, so further retries were skipped. ') +
-            'The schools you did get are kept below and can be exported.',
-  });
-  return true;
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  FINISH
@@ -1669,12 +1557,7 @@ document.querySelectorAll('[data-quickexport]').forEach(b => {
   b.addEventListener('click', () => exportReport(b.dataset.quickexport));
 });
 
-/**
- * The master list from this repository, same-origin. Preferred over the
- * published sheet: it is cacheable (the CSV is fetched with no-store and a
- * cache-buster, so it is re-downloaded on every load) and it removes the
- * dashboard's last cross-origin read. Any failure falls back to the CSV.
- */
+/** The master list, published by the workflow from config/schools.csv — same-origin, no Google involved. */
 async function loadStaticMasterList() {
   const res = await fetchJson(`${DATA_BASE}schools.json`, CFG.probeTimeoutMs);
   if (!res.ok) return false;
@@ -1782,14 +1665,13 @@ window.__SIS__ = {
   CFG,
   parseCSV, buildCSV, csvEscape, normalizeRow, esc, num,
   missingList, coveredCount, coverageText, currentRows,
-  startFetch, retryMissing, cancelRun, exportReport,
+  forceLiveFetch, retryMissing, cancelRun, exportReport,
   masterRowsFor,
   // static snapshot path (same-origin JSON published into this repo)
-  DATA_BASE, loadSnapshot, getManifest, findSnapshotEntry, fetchJson,
+  DATA_BASE, loadSnapshot, renderSnapshotEntry, getManifest, findSnapshotEntry, fetchJson,
   get manifest() { return snapshotManifest; },
-  // transport + diagnostics
-  gasGet, gasFetch, gasJsonp, runConnectionCheck,
-  get transport() { return gasTransport; },
+  // live trigger + diagnostics
+  triggerLiveFetch, liveFetchFallback, runConnectionCheck,
 };
 </script>
 </body>
