@@ -1557,6 +1557,24 @@ document.querySelectorAll('[data-quickexport]').forEach(b => {
   b.addEventListener('click', () => exportReport(b.dataset.quickexport));
 });
 
+/**
+ * Turn the published column table back into the same header-keyed objects
+ * parseCSV() used to produce, so every consumer (dropdowns, masterRowsFor,
+ * the completeness gate) sees one shape.
+ */
+function tableToRows(table) {
+  if (!table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) return null;
+  const headers = table.columns.map(h => String(h).trim());
+  if (!headers.length) return null;
+  return table.rows
+    .filter(r => Array.isArray(r) && r.some(c => String(c).trim() !== ''))
+    .map(r => {
+      const o = {};
+      headers.forEach((h, i) => { o[h] = String(r[i] === undefined ? '' : r[i]).trim(); });
+      return o;
+    });
+}
+
 /** The master list, published by the workflow from config/schools.csv — same-origin, no Google involved. */
 async function loadStaticMasterList() {
   const res = await fetchJson(`${DATA_BASE}schools.json`, CFG.probeTimeoutMs);
